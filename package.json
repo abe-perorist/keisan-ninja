@@ -1,0 +1,19 @@
+{
+  "name": "keisan-ninja",
+  "version": "1.0.0",
+  "description": "子ども向けの反射神経系計算ゲーム",
+  "main": "index.html",
+  "scripts": {
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
+  "keywords": ["game", "education", "math", "ninja"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "eslint": "^8.56.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.1.3",
+    "prettier": "^3.2.5"
+  }
+} 

@@ -1,0 +1,199 @@
+:root {
+    --primary-color: #4a90e2;
+    --secondary-color: #f5a623;
+    --background-color: #f8f9fa;
+    --text-color: #333;
+    --ninja-red: #e74c3c;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Hiragino Kaku Gothic ProN', 'メイリオ', sans-serif;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    line-height: 1.6;
+}
+
+.game-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+h1 {
+    font-size: 2.5rem;
+    color: var(--ninja-red);
+    margin-bottom: 1rem;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.score-container {
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+}
+
+.score {
+    font-weight: bold;
+    color: var(--primary-color);
+    transition: transform 0.3s;
+}
+
+.score.updated {
+    animation: bounce 0.5s;
+}
+
+.rank {
+    margin-left: 1rem;
+    color: var(--secondary-color);
+    transition: color 0.3s;
+}
+
+.rank.updated {
+    animation: fadeIn 0.5s;
+}
+
+.game-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 2rem;
+}
+
+.question-container {
+    text-align: center;
+    font-size: 2rem;
+    min-height: 3rem;
+}
+
+.answer-container {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.answer-btn {
+    padding: 1rem 2rem;
+    font-size: 1.2rem;
+    border: none;
+    border-radius: 8px;
+    background-color: var(--primary-color);
+    color: white;
+    cursor: pointer;
+    transition: transform 0.2s, background-color 0.2s, box-shadow 0.2s;
+}
+
+.answer-btn:hover {
+    transform: scale(1.05);
+    background-color: #357abd;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.answer-btn:active {
+    transform: scale(0.95);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+footer {
+    text-align: center;
+    margin-top: 2rem;
+    color: #666;
+}
+
+/* レスポンシブデザイン */
+@media (max-width: 600px) {
+    .game-container {
+        padding: 10px;
+    }
+
+    h1 {
+        font-size: 2rem;
+    }
+
+    .question-container {
+        font-size: 1.5rem;
+    }
+
+    .answer-btn {
+        padding: 0.8rem 1.6rem;
+        font-size: 1rem;
+    }
+}
+
+/* アニメーション */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+@keyframes bounce {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+/* アニメーションクラス */
+.correct {
+    animation: bounce 0.5s;
+    color: #2ecc71;
+}
+
+.incorrect {
+    animation: shake 0.5s;
+    color: #e74c3c;
+}
+
+/* スコア更新時のアニメーション */
+.score {
+    transition: transform 0.3s;
+}
+
+.score.updated {
+    animation: bounce 0.5s;
+}
+
+/* ランク更新時のアニメーション */
+.rank {
+    transition: color 0.3s;
+}
+
+.rank.updated {
+    animation: fadeIn 0.5s;
+} 
