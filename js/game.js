@@ -142,6 +142,7 @@ class Game {
         
         choices.forEach(choice => {
             const button = document.createElement('button');
+            button.type = 'button';
             button.className = 'answer-btn';
             button.textContent = choice;
             button.addEventListener('click', () => this.checkAnswer(choice, question.answer));
@@ -288,8 +289,8 @@ class Game {
         
         // 終了時のボタン表示
         this.answerContainer.innerHTML = `
-            <button class="answer-btn restart-btn">もう一度挑戦</button>
-            <button class="answer-btn title-btn">タイトルに戻る</button>
+            <button type="button" class="answer-btn restart-btn">もう一度挑戦</button>
+            <button type="button" class="answer-btn title-btn">タイトルに戻る</button>
         `;
 
         // ボタンのイベントリスナー
