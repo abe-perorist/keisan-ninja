@@ -16,14 +16,17 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '18.x'
+        node-version: '20'
         cache: 'npm'
     
     - name: Install dependencies
       run: npm ci
     
+    - name: Install html-validate
+      run: npm install -g html-validate
+    
     - name: Check HTML
-      uses: chabad360/html5validator@master
+      run: html-validate index.html
     
     - name: Check JavaScript
       run: |

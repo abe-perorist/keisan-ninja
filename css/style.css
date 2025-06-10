@@ -43,6 +43,10 @@ h1 {
 .score-container {
     font-size: 1.2rem;
     margin-bottom: 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .score {
@@ -53,6 +57,21 @@ h1 {
 
 .score.updated {
     animation: bounce 0.5s;
+}
+
+.high-score {
+    font-size: 1rem;
+    color: var(--secondary-color);
+    transition: transform 0.3s;
+}
+
+.high-score.updated {
+    animation: bounce 0.5s;
+    color: #f1c40f;
+}
+
+.high-score span {
+    font-weight: bold;
 }
 
 .rank {
@@ -196,4 +215,104 @@ footer {
 
 .rank.updated {
     animation: fadeIn 0.5s;
+}
+
+.restart-btn {
+    background-color: var(--secondary-color);
+    margin-top: 1rem;
+}
+
+.restart-btn:hover {
+    background-color: #e69500;
+}
+
+.choices-container {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-bottom: 1rem;
+}
+
+.operator-selection {
+    text-align: center;
+    padding: 2rem;
+    background-color: rgba(255, 255, 255, 0.9);
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+}
+
+.operator-selection h2 {
+    color: var(--ninja-red);
+    margin-bottom: 1.5rem;
+    font-size: 1.8rem;
+}
+
+.operator-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 2rem;
+}
+
+.operator-btn {
+    padding: 1rem 2rem;
+    font-size: 1.2rem;
+    border: none;
+    border-radius: 8px;
+    background-color: var(--primary-color);
+    color: white;
+    cursor: pointer;
+    transition: transform 0.2s, background-color 0.2s, box-shadow 0.2s;
+    min-width: 120px;
+}
+
+.operator-btn:hover {
+    transform: scale(1.05);
+    background-color: #357abd;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.operator-btn:active {
+    transform: scale(0.95);
+}
+
+.high-scores {
+    background-color: rgba(0, 0, 0, 0.05);
+    padding: 1rem;
+    border-radius: 8px;
+}
+
+.high-scores h3 {
+    color: var(--text-color);
+    margin-bottom: 1rem;
+    font-size: 1.2rem;
+}
+
+.high-score-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.5rem;
+    text-align: left;
+    padding: 0 1rem;
+}
+
+.high-score-list p {
+    margin: 0.5rem 0;
+}
+
+.high-score-list .high-score {
+    font-weight: bold;
+    color: var(--secondary-color);
+}
+
+.title-btn {
+    background-color: var(--ninja-red);
+    margin-left: 1rem;
+}
+
+.title-btn:hover {
+    background-color: #c0392b;
 } 
