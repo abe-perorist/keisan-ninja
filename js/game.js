@@ -35,7 +35,8 @@ class Game {
             '+': this.loadHighScore('addition'),
             '-': this.loadHighScore('subtraction'),
             '×': this.loadHighScore('multiplication'),
-            '÷': this.loadHighScore('division')
+            '÷': this.loadHighScore('division'),
+            'special': this.loadHighScore('special')
         };
 
         // 演算子選択画面の初期化
@@ -53,6 +54,7 @@ class Game {
                 <button class="operator-btn" data-operator="-">引き算</button>
                 <button class="operator-btn" data-operator="×">掛け算</button>
                 <button class="operator-btn" data-operator="÷">割り算</button>
+                <button class="operator-btn special-btn" data-operator="special">スペシャル</button>
             </div>
             <div class="high-scores">
                 <h3>ハイスコア</h3>
@@ -61,6 +63,7 @@ class Game {
                     <p>引き算: <span class="high-score" data-operator="-">${this.highScores['-']}</span>点</p>
                     <p>掛け算: <span class="high-score" data-operator="×">${this.highScores['×']}</span>点</p>
                     <p>割り算: <span class="high-score" data-operator="÷">${this.highScores['÷']}</span>点</p>
+                    <p>スペシャル: <span class="high-score" data-operator="special">${this.highScores['special']}</span>点</p>
                 </div>
             </div>
         `;
@@ -88,7 +91,12 @@ class Game {
     }
 
     saveHighScore(operator, score) {
-        localStorage.setItem(`keisanNinjaHighScore_${operator}`, score.toString());
+        const operatorKey = operator === 'special' ? 'special' : 
+                           operator === '+' ? 'addition' :
+                           operator === '-' ? 'subtraction' :
+                           operator === '×' ? 'multiplication' :
+                           operator === '÷' ? 'division' : operator;
+        localStorage.setItem(`keisanNinjaHighScore_${operatorKey}`, score.toString());
     }
 
     startGame() {
@@ -128,7 +136,9 @@ class Game {
     showNextQuestion() {
         if (!this.isPlaying) return;
         
-        if (this.questionCount >= 10) {
+        // スペシャルモードは30問、通常モードは10問
+        const maxQuestions = this.currentOperator === 'special' ? 30 : 10;
+        if (this.questionCount >= maxQuestions) {
             this.endGame();
             return;
         }
@@ -156,11 +166,19 @@ class Game {
     }
 
     generateQuestion() {
-        let num1, num2, answer;
+        let num1, num2, answer, operator;
         const difficulty = Math.min(Math.floor(this.score / 10), 3);
         const maxNumber = 10 + (difficulty * 5);
 
-        switch (this.currentOperator) {
+        // スペシャルモードの場合はランダムに演算子を選択
+        if (this.currentOperator === 'special') {
+            const operators = ['+', '-', '×', '÷'];
+            operator = operators[Math.floor(Math.random() * operators.length)];
+        } else {
+            operator = this.currentOperator;
+        }
+
+        switch (operator) {
             case '+':
                 num1 = Math.floor(Math.random() * maxNumber) + 1;
                 num2 = Math.floor(Math.random() * maxNumber) + 1;
@@ -184,7 +202,7 @@ class Game {
         }
 
         return {
-            text: `${num1} ${this.currentOperator} ${num2} = ?`,
+            text: `${num1} ${operator} ${num2} = ?`,
             answer: answer
         };
     }
