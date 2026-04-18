@@ -2,344 +2,313 @@ class Game {
     constructor() {
         this.score = 0;
         this.questionCount = 0;
-        this.timeLimit = 5; // 各問題の制限時間（秒）
-        this.totalTimeLimit = 60; // 全体の制限時間（秒）
-        this.timer = null;
-        this.totalTimer = null;
+        this.timeLimit = 5;
+        this.totalTimeLimit = 60;
+        this.totalTimeLeft = 60;
+        this.questionTimer = null;
+        this.totalTimerInterval = null;
         this.isPlaying = false;
         this.currentOperator = null;
+        this.app = document.getElementById('app');
 
-        // DOM要素
-        this.gameContainer = document.querySelector('.game-container');
-        this.questionElement = document.querySelector('.question');
-        this.scoreElement = document.querySelector('.score');
-        this.rankElement = document.querySelector('.rank');
-        this.answerContainer = document.querySelector('.answer-container');
-        this.startButton = document.querySelector('.answer-btn');
-
-        // 音声の初期化
         this.sounds = {
             correct: new Audio('sounds/correct.mp3'),
             incorrect: new Audio('sounds/incorrect.mp3'),
             start: new Audio('sounds/start.mp3'),
-            end: new Audio('sounds/end.mp3')
+            end: new Audio('sounds/end.mp3'),
         };
+        Object.values(this.sounds).forEach(s => s.load());
 
-        // 音声のプリロード
-        Object.values(this.sounds).forEach(sound => {
-            sound.load();
-        });
-
-        // 演算子ごとのハイスコアの初期化
         this.highScores = {
             '+': this.loadHighScore('addition'),
             '-': this.loadHighScore('subtraction'),
             '×': this.loadHighScore('multiplication'),
             '÷': this.loadHighScore('division'),
-            'special': this.loadHighScore('special')
+            special: this.loadHighScore('special'),
         };
 
-        // 演算子選択画面の初期化
-        this.initOperatorSelection();
+        this.renderModeSelect();
     }
 
-    initOperatorSelection() {
-        // 演算子選択画面の作成
-        const operatorContainer = document.createElement('div');
-        operatorContainer.className = 'operator-selection';
-        operatorContainer.innerHTML = `
-            <h2>計算の種類を選んでください</h2>
-            <div class="operator-buttons">
-                <button class="operator-btn" data-operator="+">足し算</button>
-                <button class="operator-btn" data-operator="-">引き算</button>
-                <button class="operator-btn" data-operator="×">掛け算</button>
-                <button class="operator-btn" data-operator="÷">割り算</button>
-                <button class="operator-btn special-btn" data-operator="special">スペシャル</button>
-            </div>
-            <div class="high-scores">
-                <h3>ハイスコア</h3>
-                <div class="high-score-list">
-                    <p>足し算: <span class="high-score" data-operator="+">${this.highScores['+']}</span>点</p>
-                    <p>引き算: <span class="high-score" data-operator="-">${this.highScores['-']}</span>点</p>
-                    <p>掛け算: <span class="high-score" data-operator="×">${this.highScores['×']}</span>点</p>
-                    <p>割り算: <span class="high-score" data-operator="÷">${this.highScores['÷']}</span>点</p>
-                    <p>スペシャル: <span class="high-score" data-operator="special">${this.highScores['special']}</span>点</p>
+    loadHighScore(key) {
+        return parseInt(localStorage.getItem(`keisanNinjaHighScore_${key}`), 10) || 0;
+    }
+
+    saveHighScore(operator, score) {
+        const keys = { '+': 'addition', '-': 'subtraction', '×': 'multiplication', '÷': 'division', special: 'special' };
+        localStorage.setItem(`keisanNinjaHighScore_${keys[operator]}`, score.toString());
+    }
+
+    getRankInfo(score) {
+        if (score >= 50) return { name: '上忍', emoji: '🥷', color: '#e74c3c' };
+        if (score >= 30) return { name: '中忍', emoji: '⚔️', color: '#f39c12' };
+        if (score >= 10) return { name: '下忍', emoji: '🌟', color: '#3498db' };
+        return { name: '見習い', emoji: '🌱', color: '#2ecc71' };
+    }
+
+    renderModeSelect() {
+        const modes = [
+            { op: '+', label: '足し算', symbol: '＋', color: '#27ae60' },
+            { op: '-', label: '引き算', symbol: '－', color: '#2980b9' },
+            { op: '×', label: '掛け算', symbol: '✕', color: '#e67e22' },
+            { op: '÷', label: '割り算', symbol: '÷', color: '#8e44ad' },
+        ];
+        const hsLabels = { '+': '足し算', '-': '引き算', '×': '掛け算', '÷': '割り算', special: 'スペシャル' };
+
+        this.app.innerHTML = `
+            <div class="screen mode-select-screen">
+                <div class="title-area">
+                    <div class="title-logo">🥷</div>
+                    <h1 class="game-title">計算忍者</h1>
+                </div>
+                <div class="mode-grid">
+                    ${modes.map(m => `
+                        <button class="mode-btn" data-op="${m.op}" style="--c:${m.color}">
+                            <span class="mode-symbol">${m.symbol}</span>
+                            <span class="mode-label">${m.label}</span>
+                        </button>
+                    `).join('')}
+                </div>
+                <button class="special-mode-btn" data-op="special">✨ スペシャル</button>
+                <div class="hs-panel">
+                    <p class="hs-heading">ハイスコア</p>
+                    <div class="hs-grid">
+                        ${Object.entries(this.highScores).map(([op, s]) => `
+                            <div class="hs-cell">
+                                <span class="hs-name">${hsLabels[op]}</span>
+                                <span class="hs-val">${s}<small>点</small></span>
+                            </div>
+                        `).join('')}
+                    </div>
                 </div>
             </div>
         `;
 
-        // 演算子ボタンのイベントリスナー
-        operatorContainer.querySelectorAll('.operator-btn').forEach(button => {
-            button.addEventListener('click', () => {
-                this.currentOperator = button.dataset.operator;
+        this.app.querySelectorAll('[data-op]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.currentOperator = btn.dataset.op;
                 this.startGame();
-                operatorContainer.style.display = 'none';
             });
         });
-
-        // ゲームコンテナに追加
-        this.gameContainer.insertBefore(operatorContainer, this.gameContainer.firstChild);
-
-        // 初期状態ではゲーム部分を非表示
-        this.questionElement.parentElement.style.display = 'none';
-        this.answerContainer.style.display = 'none';
-    }
-
-    loadHighScore(operator) {
-        const savedScore = localStorage.getItem(`keisanNinjaHighScore_${operator}`);
-        return savedScore ? parseInt(savedScore, 10) : 0;
-    }
-
-    saveHighScore(operator, score) {
-        const operatorKey = operator === 'special' ? 'special' : 
-                           operator === '+' ? 'addition' :
-                           operator === '-' ? 'subtraction' :
-                           operator === '×' ? 'multiplication' :
-                           operator === '÷' ? 'division' : operator;
-        localStorage.setItem(`keisanNinjaHighScore_${operatorKey}`, score.toString());
     }
 
     startGame() {
-        if (this.isPlaying) return;
-        
-        this.isPlaying = true;
         this.score = 0;
         this.questionCount = 0;
-        this.updateScore();
-        this.updateRank();
-        
-        // スタート音を再生
-        this.sounds.start.play();
-        
-        // ゲーム部分を表示
-        this.questionElement.parentElement.style.display = 'block';
-        this.answerContainer.style.display = 'block';
-        
-        // スタートボタンを非表示
-        this.startButton.style.display = 'none';
-        
-        // 終了時のボタンを非表示
-        this.answerContainer.innerHTML = '';
-        
-        // 選択肢コンテナを表示
-        this.choicesContainer = document.createElement('div');
-        this.choicesContainer.className = 'choices-container';
-        this.answerContainer.appendChild(this.choicesContainer);
-        
-        // 全体のタイマー開始
+        this.totalTimeLeft = this.totalTimeLimit;
+        this.isPlaying = true;
+        this.sounds.start.play().catch(() => {});
+        this.renderGameScreen();
         this.startTotalTimer();
-        
-        // 最初の問題を表示
         this.showNextQuestion();
+    }
+
+    renderGameScreen() {
+        const maxQ = this.currentOperator === 'special' ? 30 : 10;
+        this.app.innerHTML = `
+            <div class="screen game-screen">
+                <div class="game-header">
+                    <div class="stat-box">
+                        <span class="stat-label">スコア</span>
+                        <span class="stat-value gold" id="scoreVal">0</span>
+                    </div>
+                    <div class="stat-box center">
+                        <span class="stat-label" id="qProgress">1 / ${maxQ}</span>
+                    </div>
+                    <div class="stat-box right">
+                        <span class="stat-label">残り</span>
+                        <span class="stat-value blue" id="timerVal">60</span><span class="stat-unit">秒</span>
+                    </div>
+                </div>
+                <div class="q-timer-wrap">
+                    <div class="q-timer-bar" id="qTimerBar"></div>
+                </div>
+                <div class="question-area">
+                    <div class="question-text" id="questionText"></div>
+                    <div class="feedback" id="feedback"></div>
+                </div>
+                <div class="choices-area" id="choicesArea"></div>
+            </div>
+        `;
     }
 
     showNextQuestion() {
         if (!this.isPlaying) return;
-        
-        // スペシャルモードは30問、通常モードは10問
-        const maxQuestions = this.currentOperator === 'special' ? 30 : 10;
-        if (this.questionCount >= maxQuestions) {
+        const maxQ = this.currentOperator === 'special' ? 30 : 10;
+
+        if (this.questionCount >= maxQ) {
             this.endGame();
             return;
         }
-        
-        const question = this.generateQuestion();
-        this.questionElement.textContent = question.text;
-        
-        // 選択肢を生成
-        const choices = this.generateChoices(question.answer);
-        this.choicesContainer.innerHTML = '';
-        
-        choices.forEach(choice => {
-            const button = document.createElement('button');
-            button.type = 'button';
-            button.className = 'answer-btn';
-            button.textContent = choice;
-            button.addEventListener('click', () => this.checkAnswer(choice, question.answer));
-            this.choicesContainer.appendChild(button);
+
+        const q = this.generateQuestion();
+        const colors = ['#e74c3c', '#f39c12', '#2980b9'];
+        const choices = this.generateChoices(q.answer);
+
+        document.getElementById('qProgress').textContent = `${this.questionCount + 1} / ${maxQ}`;
+        document.getElementById('questionText').textContent = q.text;
+
+        const fb = document.getElementById('feedback');
+        fb.textContent = '';
+        fb.className = 'feedback';
+
+        document.getElementById('choicesArea').innerHTML = choices.map((c, i) => `
+            <button class="choice-btn" data-val="${c}" style="--cc:${colors[i]}">${c}</button>
+        `).join('');
+
+        document.querySelectorAll('.choice-btn').forEach(btn => {
+            btn.addEventListener('click', () => this.checkAnswer(Number(btn.dataset.val), q.answer));
         });
-        
-        // タイマーをリセット
-        this.startTimer();
-        
+
         this.questionCount++;
+        this.startQuestionTimer();
     }
 
     generateQuestion() {
-        let num1, num2, answer, operator;
         const difficulty = Math.min(Math.floor(this.score / 10), 3);
-        const maxNumber = 10 + (difficulty * 5);
+        const maxNum = 10 + difficulty * 5;
+        let num1, num2, answer, op;
 
-        // スペシャルモードの場合はランダムに演算子を選択
         if (this.currentOperator === 'special') {
-            const operators = ['+', '-', '×', '÷'];
-            operator = operators[Math.floor(Math.random() * operators.length)];
+            const ops = ['+', '-', '×', '÷'];
+            op = ops[Math.floor(Math.random() * ops.length)];
         } else {
-            operator = this.currentOperator;
+            op = this.currentOperator;
         }
 
-        switch (operator) {
+        switch (op) {
             case '+':
-                num1 = Math.floor(Math.random() * maxNumber) + 1;
-                num2 = Math.floor(Math.random() * maxNumber) + 1;
+                num1 = Math.floor(Math.random() * maxNum) + 1;
+                num2 = Math.floor(Math.random() * maxNum) + 1;
                 answer = num1 + num2;
                 break;
             case '-':
-                num1 = Math.floor(Math.random() * maxNumber) + 1;
+                num1 = Math.floor(Math.random() * maxNum) + 1;
                 num2 = Math.floor(Math.random() * num1) + 1;
                 answer = num1 - num2;
                 break;
             case '×':
-                num1 = Math.floor(Math.random() * Math.min(maxNumber, 10)) + 1;
-                num2 = Math.floor(Math.random() * Math.min(maxNumber, 10)) + 1;
+                num1 = Math.floor(Math.random() * Math.min(maxNum, 9)) + 1;
+                num2 = Math.floor(Math.random() * Math.min(maxNum, 9)) + 1;
                 answer = num1 * num2;
                 break;
             case '÷':
-                answer = Math.floor(Math.random() * Math.min(maxNumber, 10)) + 1;
-                num2 = Math.floor(Math.random() * Math.min(maxNumber, 10)) + 1;
+                answer = Math.floor(Math.random() * Math.min(maxNum, 9)) + 1;
+                num2 = Math.floor(Math.random() * Math.min(maxNum, 9)) + 1;
                 num1 = answer * num2;
                 break;
         }
 
-        return {
-            text: `${num1} ${operator} ${num2} = ?`,
-            answer: answer
-        };
+        return { text: `${num1} ${op} ${num2} ＝ ？`, answer };
     }
 
-    generateChoices(correctAnswer) {
-        const choices = new Set([correctAnswer]);
-        while (choices.size < 3) {
+    generateChoices(correct) {
+        const set = new Set([correct]);
+        let attempts = 0;
+        while (set.size < 3 && attempts < 30) {
+            attempts++;
             const offset = Math.floor(Math.random() * 5) + 1;
-            const sign = Math.random() < 0.5 ? 1 : -1;
-            choices.add(correctAnswer + (offset * sign));
+            const val = correct + offset * (Math.random() < 0.5 ? 1 : -1);
+            if (val > 0) set.add(val);
         }
-        return Array.from(choices).sort(() => Math.random() - 0.5);
+        return Array.from(set).sort(() => Math.random() - 0.5);
     }
 
     checkAnswer(selected, correct) {
+        clearTimeout(this.questionTimer);
+
+        document.querySelectorAll('.choice-btn').forEach(btn => {
+            btn.disabled = true;
+            const v = Number(btn.dataset.val);
+            if (v === correct) btn.classList.add('btn-correct');
+            else if (v === selected && v !== correct) btn.classList.add('btn-wrong');
+        });
+
+        const fb = document.getElementById('feedback');
         if (selected === correct) {
             this.score += 10;
-            this.updateScore();
-            this.playCorrectSound();
-            // 正解アニメーション
-            this.questionElement.classList.add('correct');
-            setTimeout(() => {
-                this.questionElement.classList.remove('correct');
-            }, 500);
-        } else {
-            this.playIncorrectSound();
-            // 不正解アニメーション
-            this.questionElement.classList.add('incorrect');
-            setTimeout(() => {
-                this.questionElement.classList.remove('incorrect');
-            }, 500);
-        }
-
-        // 次の問題へ
-        this.showNextQuestion();
-    }
-
-    updateScore() {
-        this.scoreElement.textContent = this.score;
-        
-        // ハイスコアの更新
-        if (this.score > this.highScores[this.currentOperator]) {
-            this.highScores[this.currentOperator] = this.score;
-            this.saveHighScore(this.currentOperator, this.score);
-            
-            // ハイスコア表示の更新
-            const highScoreElement = document.querySelector(`.high-score[data-operator="${this.currentOperator}"]`);
-            if (highScoreElement) {
-                highScoreElement.textContent = this.score;
-                highScoreElement.classList.add('updated');
-                setTimeout(() => {
-                    highScoreElement.classList.remove('updated');
-                }, 1000);
+            if (this.score > this.highScores[this.currentOperator]) {
+                this.highScores[this.currentOperator] = this.score;
+                this.saveHighScore(this.currentOperator, this.score);
             }
+            const sv = document.getElementById('scoreVal');
+            if (sv) {
+                sv.textContent = this.score;
+                sv.classList.add('pop');
+                setTimeout(() => sv.classList.remove('pop'), 400);
+            }
+            fb.textContent = '⭕ せいかい！';
+            fb.className = 'feedback fb-correct';
+            this.sounds.correct.currentTime = 0;
+            this.sounds.correct.play().catch(() => {});
+        } else {
+            fb.textContent = '❌ ざんねん';
+            fb.className = 'feedback fb-wrong';
+            this.sounds.incorrect.currentTime = 0;
+            this.sounds.incorrect.play().catch(() => {});
         }
+
+        setTimeout(() => this.showNextQuestion(), 800);
     }
 
-    updateRank() {
-        let rank = '見習い';
-        if (this.score >= 50) rank = '上忍';
-        else if (this.score >= 30) rank = '中忍';
-        else if (this.score >= 10) rank = '下忍';
-        
-        this.rankElement.textContent = rank;
-    }
-
-    startTimer() {
-        if (this.timer) clearTimeout(this.timer);
-        
-        this.timer = setTimeout(() => {
-            this.playIncorrectSound();
+    startQuestionTimer() {
+        clearTimeout(this.questionTimer);
+        const bar = document.getElementById('qTimerBar');
+        if (bar) {
+            bar.classList.remove('running');
+            void bar.offsetWidth;
+            bar.classList.add('running');
+        }
+        this.questionTimer = setTimeout(() => {
+            this.sounds.incorrect.currentTime = 0;
+            this.sounds.incorrect.play().catch(() => {});
             this.showNextQuestion();
         }, this.timeLimit * 1000);
     }
 
     startTotalTimer() {
-        if (this.totalTimer) clearTimeout(this.totalTimer);
-        
-        this.totalTimer = setTimeout(() => {
-            this.endGame();
-        }, this.totalTimeLimit * 1000);
+        clearInterval(this.totalTimerInterval);
+        this.totalTimerInterval = setInterval(() => {
+            this.totalTimeLeft--;
+            const el = document.getElementById('timerVal');
+            if (el) {
+                el.textContent = this.totalTimeLeft;
+                if (this.totalTimeLeft <= 10) el.classList.add('timer-warn');
+            }
+            if (this.totalTimeLeft <= 0) {
+                clearInterval(this.totalTimerInterval);
+                this.endGame();
+            }
+        }, 1000);
     }
 
     endGame() {
+        if (!this.isPlaying) return;
         this.isPlaying = false;
-        clearTimeout(this.timer);
-        clearTimeout(this.totalTimer);
-        
-        // 終了音を再生
-        this.sounds.end.play();
-        
-        // ハイスコア更新時のメッセージ
-        let endMessage = `ゲーム終了！\nスコア: ${this.score}点`;
-        if (this.score >= this.highScores[this.currentOperator]) {
-            endMessage += '\n🎉 ハイスコア更新！';
-        }
-        
-        this.questionElement.textContent = endMessage;
-        
-        // 選択肢を非表示
-        this.choicesContainer.style.display = 'none';
-        
-        // 終了時のボタン表示
-        this.answerContainer.innerHTML = `
-            <button type="button" class="answer-btn restart-btn">もう一度挑戦</button>
-            <button type="button" class="answer-btn title-btn">タイトルに戻る</button>
+        clearTimeout(this.questionTimer);
+        clearInterval(this.totalTimerInterval);
+        this.sounds.end.play().catch(() => {});
+
+        const rank = this.getRankInfo(this.score);
+        const isRecord = this.score > 0 && this.score >= this.highScores[this.currentOperator];
+
+        this.app.innerHTML = `
+            <div class="screen result-screen">
+                <div class="rank-emoji">${rank.emoji}</div>
+                <div class="rank-name" style="color:${rank.color}">${rank.name}</div>
+                <div class="score-label">スコア</div>
+                <div class="final-score">${this.score}<small>点</small></div>
+                ${isRecord ? '<div class="new-record">🎉 ハイスコア更新！</div>' : ''}
+                <div class="result-btns">
+                    <button class="rbtn rbtn-retry">もう一度</button>
+                    <button class="rbtn rbtn-back">もどる</button>
+                </div>
+            </div>
         `;
 
-        // ボタンのイベントリスナー
-        this.answerContainer.querySelector('.restart-btn').addEventListener('click', () => this.startGame());
-        this.answerContainer.querySelector('.title-btn').addEventListener('click', () => this.showTitle());
-    }
-
-    showTitle() {
-        // ゲーム部分を非表示
-        this.questionElement.parentElement.style.display = 'none';
-        this.answerContainer.style.display = 'none';
-        
-        // スタートボタンを再表示
-        this.startButton.style.display = 'block';
-        
-        // 演算子選択画面を表示
-        document.querySelector('.operator-selection').style.display = 'block';
-    }
-
-    playCorrectSound() {
-        this.sounds.correct.currentTime = 0;
-        this.sounds.correct.play();
-    }
-
-    playIncorrectSound() {
-        this.sounds.incorrect.currentTime = 0;
-        this.sounds.incorrect.play();
+        this.app.querySelector('.rbtn-retry').addEventListener('click', () => this.startGame());
+        this.app.querySelector('.rbtn-back').addEventListener('click', () => this.renderModeSelect());
     }
 }
 
-// ゲームの初期化
-document.addEventListener('DOMContentLoaded', () => {
-    new Game();
-}); 
+document.addEventListener('DOMContentLoaded', () => new Game());
