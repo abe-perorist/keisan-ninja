@@ -40,9 +40,9 @@ class Game {
     }
 
     getRankInfo(score) {
-        if (score >= 50) return { name: '上忍', emoji: '🥷', color: '#e74c3c' };
-        if (score >= 30) return { name: '中忍', emoji: '⚔️', color: '#f39c12' };
-        if (score >= 10) return { name: '下忍', emoji: '🌟', color: '#3498db' };
+        if (score >= 140) return { name: '上忍', emoji: '🥷', color: '#e74c3c' };
+        if (score >= 100) return { name: '中忍', emoji: '⚔️', color: '#f39c12' };
+        if (score >= 50)  return { name: '下忍', emoji: '🌟', color: '#3498db' };
         return { name: '見習い', emoji: '🌱', color: '#2ecc71' };
     }
 
@@ -104,7 +104,7 @@ class Game {
     }
 
     renderGameScreen() {
-        const maxQ = this.currentOperator === 'special' ? 30 : 10;
+        const maxQ = this.currentOperator === 'special' ? 45 : 15;
         this.app.innerHTML = `
             <div class="screen game-screen">
                 <div class="game-header">
@@ -134,7 +134,7 @@ class Game {
 
     showNextQuestion() {
         if (!this.isPlaying) return;
-        const maxQ = this.currentOperator === 'special' ? 30 : 10;
+        const maxQ = this.currentOperator === 'special' ? 45 : 15;
 
         if (this.questionCount >= maxQ) {
             this.endGame();
@@ -165,8 +165,11 @@ class Game {
     }
 
     generateQuestion() {
-        const difficulty = Math.min(Math.floor(this.score / 10), 3);
-        const maxNum = 10 + difficulty * 5;
+        const difficulty = Math.min(Math.floor(this.score / 20), 5);
+        const maxNums = [10, 20, 35, 50, 75, 100];
+        const maxMuls = [9,  9,   9, 12, 12,  15];
+        const maxNum = maxNums[difficulty];
+        const maxMul = maxMuls[difficulty];
         let num1, num2, answer, op;
 
         if (this.currentOperator === 'special') {
@@ -188,13 +191,13 @@ class Game {
                 answer = num1 - num2;
                 break;
             case '×':
-                num1 = Math.floor(Math.random() * Math.min(maxNum, 9)) + 1;
-                num2 = Math.floor(Math.random() * Math.min(maxNum, 9)) + 1;
+                num1 = Math.floor(Math.random() * maxMul) + 1;
+                num2 = Math.floor(Math.random() * maxMul) + 1;
                 answer = num1 * num2;
                 break;
             case '÷':
-                answer = Math.floor(Math.random() * Math.min(maxNum, 9)) + 1;
-                num2 = Math.floor(Math.random() * Math.min(maxNum, 9)) + 1;
+                answer = Math.floor(Math.random() * maxMul) + 1;
+                num2 = Math.floor(Math.random() * maxMul) + 1;
                 num1 = answer * num2;
                 break;
         }
@@ -204,10 +207,11 @@ class Game {
 
     generateChoices(correct) {
         const set = new Set([correct]);
+        const maxOffset = Math.max(5, Math.floor(correct * 0.25));
         let attempts = 0;
-        while (set.size < 3 && attempts < 30) {
+        while (set.size < 3 && attempts < 50) {
             attempts++;
-            const offset = Math.floor(Math.random() * 5) + 1;
+            const offset = Math.floor(Math.random() * maxOffset) + 1;
             const val = correct + offset * (Math.random() < 0.5 ? 1 : -1);
             if (val > 0) set.add(val);
         }
