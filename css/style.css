@@ -76,6 +76,51 @@ body {
     letter-spacing: 0.06em;
 }
 
+.intro-mode-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 20px;
+    border: none;
+    border-radius: 18px;
+    background: linear-gradient(135deg, #e91e8c, #f06292);
+    color: #fff;
+    cursor: pointer;
+    box-shadow: 0 5px 0 rgba(0,0,0,0.35);
+    transition: transform 0.1s, box-shadow 0.1s;
+    user-select: none;
+    text-align: left;
+}
+
+.intro-mode-btn:active {
+    transform: translateY(4px);
+    box-shadow: 0 1px 0 rgba(0,0,0,0.35);
+}
+
+.intro-icon {
+    font-size: 2.2rem;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.intro-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.intro-label {
+    font-size: 1.15rem;
+    font-weight: 900;
+}
+
+.intro-desc {
+    font-size: 0.8rem;
+    opacity: 0.85;
+    font-weight: 600;
+}
+
 .mode-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;

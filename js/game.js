@@ -20,6 +20,7 @@ class Game {
         Object.values(this.sounds).forEach(s => s.load());
 
         this.highScores = {
+            intro: this.loadHighScore('intro'),
             '+': this.loadHighScore('addition'),
             '-': this.loadHighScore('subtraction'),
             '×': this.loadHighScore('multiplication'),
@@ -35,11 +36,17 @@ class Game {
     }
 
     saveHighScore(operator, score) {
-        const keys = { '+': 'addition', '-': 'subtraction', '×': 'multiplication', '÷': 'division', special: 'special' };
+        const keys = { intro: 'intro', '+': 'addition', '-': 'subtraction', '×': 'multiplication', '÷': 'division', special: 'special' };
         localStorage.setItem(`keisanNinjaHighScore_${keys[operator]}`, score.toString());
     }
 
-    getRankInfo(score) {
+    getRankInfo(score, operator) {
+        if (operator === 'intro') {
+            if (score >= 90)  return { name: 'けいさんめいじん', emoji: '🌟', color: '#f39c12' };
+            if (score >= 60)  return { name: 'けいさんじょうず', emoji: '😊', color: '#27ae60' };
+            if (score >= 30)  return { name: 'がんばりや',       emoji: '💪', color: '#3498db' };
+            return { name: 'ちょうせんちゅう', emoji: '🌱', color: '#9b59b6' };
+        }
         if (score >= 140) return { name: '上忍', emoji: '🥷', color: '#e74c3c' };
         if (score >= 100) return { name: '中忍', emoji: '⚔️', color: '#f39c12' };
         if (score >= 50)  return { name: '下忍', emoji: '🌟', color: '#3498db' };
@@ -53,7 +60,7 @@ class Game {
             { op: '×', label: '掛け算', symbol: '✕', color: '#e67e22' },
             { op: '÷', label: '割り算', symbol: '÷', color: '#8e44ad' },
         ];
-        const hsLabels = { '+': '足し算', '-': '引き算', '×': '掛け算', '÷': '割り算', special: 'スペシャル' };
+        const hsLabels = { intro: 'にゅうもん', '+': '足し算', '-': '引き算', '×': '掛け算', '÷': '割り算', special: 'スペシャル' };
 
         this.app.innerHTML = `
             <div class="screen mode-select-screen">
@@ -61,6 +68,13 @@ class Game {
                     <div class="title-logo">🥷</div>
                     <h1 class="game-title">計算忍者</h1>
                 </div>
+                <button class="intro-mode-btn" data-op="intro">
+                    <span class="intro-icon">🌸</span>
+                    <span class="intro-text">
+                        <span class="intro-label">にゅうもん編</span>
+                        <span class="intro-desc">1けた＋1けた たしざん</span>
+                    </span>
+                </button>
                 <div class="mode-grid">
                     ${modes.map(m => `
                         <button class="mode-btn" data-op="${m.op}" style="--c:${m.color}">
@@ -95,6 +109,7 @@ class Game {
     startGame() {
         this.score = 0;
         this.questionCount = 0;
+        this.timeLimit = this.currentOperator === 'intro' ? 8 : 5;
         this.totalTimeLeft = this.totalTimeLimit;
         this.isPlaying = true;
         this.sounds.start.play().catch(() => {});
@@ -104,7 +119,7 @@ class Game {
     }
 
     renderGameScreen() {
-        const maxQ = this.currentOperator === 'special' ? 45 : 15;
+        const maxQ = this.currentOperator === 'special' ? 45 : this.currentOperator === 'intro' ? 10 : 15;
         this.app.innerHTML = `
             <div class="screen game-screen">
                 <div class="game-header">
@@ -134,7 +149,7 @@ class Game {
 
     showNextQuestion() {
         if (!this.isPlaying) return;
-        const maxQ = this.currentOperator === 'special' ? 45 : 15;
+        const maxQ = this.currentOperator === 'special' ? 45 : this.currentOperator === 'intro' ? 10 : 15;
 
         if (this.questionCount >= maxQ) {
             this.endGame();
@@ -165,6 +180,12 @@ class Game {
     }
 
     generateQuestion() {
+        if (this.currentOperator === 'intro') {
+            const num1 = Math.floor(Math.random() * 9) + 1;
+            const num2 = Math.floor(Math.random() * 9) + 1;
+            return { text: `${num1} ＋ ${num2} ＝ ？`, answer: num1 + num2 };
+        }
+
         const difficulty = Math.min(Math.floor(this.score / 20), 5);
         const maxNums = [10, 20, 35, 50, 75, 100];
         const maxMuls = [9,  9,   9, 12, 12,  15];
@@ -293,7 +314,7 @@ class Game {
         clearInterval(this.totalTimerInterval);
         this.sounds.end.play().catch(() => {});
 
-        const rank = this.getRankInfo(this.score);
+        const rank = this.getRankInfo(this.score, this.currentOperator);
         const isRecord = this.score > 0 && this.score >= this.highScores[this.currentOperator];
 
         this.app.innerHTML = `
