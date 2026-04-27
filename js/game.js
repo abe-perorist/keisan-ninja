@@ -80,7 +80,7 @@ class Game {
                     <span class="intro-icon">🌸</span>
                     <span class="intro-text">
                         <span class="intro-label">にゅうもん編</span>
-                        <span class="intro-desc">1けた＋1けた たしざん</span>
+                        <span class="intro-desc">たしざん ＆ ひきざん（虫食い）</span>
                     </span>
                 </button>
                 <div class="mode-grid">
@@ -196,9 +196,15 @@ class Game {
 
     generateQuestion() {
         if (this.currentOperator === 'intro') {
-            const num1 = Math.floor(Math.random() * 9) + 1;
-            const num2 = Math.floor(Math.random() * 9) + 1;
-            return { text: `${num1} ＋ ${num2} ＝ ？`, answer: num1 + num2 };
+            if (Math.random() < 0.5) {
+                const num1 = Math.floor(Math.random() * 9) + 1;
+                const num2 = Math.floor(Math.random() * 9) + 1;
+                return { text: `${num1} ＋ ${num2} ＝ ？`, answer: num1 + num2 };
+            } else {
+                const a = Math.floor(Math.random() * 8) + 2;
+                const answer = Math.floor(Math.random() * (a - 1)) + 1;
+                return { text: `${a} ー ？ ＝ ${a - answer}`, answer };
+            }
         }
 
         if (this.currentOperator === 'hyper') {
