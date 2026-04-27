@@ -189,6 +189,52 @@ body {
     50%      { background-position: 100% 50%; }
 }
 
+/* ハイパーモードボタン */
+.hyper-mode-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 20px;
+    border: none;
+    border-radius: 18px;
+    background: linear-gradient(135deg, #6c3483, #2980b9);
+    color: #fff;
+    cursor: pointer;
+    box-shadow: 0 5px 0 rgba(0,0,0,0.35), 0 0 20px rgba(162,155,254,0.3);
+    transition: transform 0.1s, box-shadow 0.1s;
+    user-select: none;
+    text-align: left;
+}
+
+.hyper-mode-btn:active {
+    transform: translateY(4px);
+    box-shadow: 0 1px 0 rgba(0,0,0,0.35);
+}
+
+.hyper-icon {
+    font-size: 2.2rem;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.hyper-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.hyper-label {
+    font-size: 1.15rem;
+    font-weight: 900;
+}
+
+.hyper-desc {
+    font-size: 0.8rem;
+    opacity: 0.85;
+    font-weight: 600;
+}
+
 /* ハイスコアパネル */
 .hs-panel {
     width: 100%;
