@@ -139,7 +139,7 @@ class Game {
     startGame() {
         this.score = 0;
         this.questionCount = 0;
-        this.timeLimit = this.currentOperator === 'intro' ? 15 : this.currentOperator === 'hyper' ? 7 : this.currentOperator === 'master' ? 8 : 5;
+        this.timeLimit = this.currentOperator === 'intro' ? 15 : this.currentOperator === 'hyper' ? 7 : this.currentOperator === 'master' ? 30 : 5;
         this.totalTimeLeft = this.currentOperator === 'intro' ? 120 : this.totalTimeLimit;
         this.isPlaying = true;
         this.sounds.start.play().catch(() => {});
