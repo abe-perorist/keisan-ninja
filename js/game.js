@@ -26,6 +26,7 @@ class Game {
             '×': this.loadHighScore('multiplication'),
             '÷': this.loadHighScore('division'),
             special: this.loadHighScore('special'),
+            hyper: this.loadHighScore('hyper'),
         };
 
         this.renderModeSelect();
@@ -36,7 +37,7 @@ class Game {
     }
 
     saveHighScore(operator, score) {
-        const keys = { intro: 'intro', '+': 'addition', '-': 'subtraction', '×': 'multiplication', '÷': 'division', special: 'special' };
+        const keys = { intro: 'intro', '+': 'addition', '-': 'subtraction', '×': 'multiplication', '÷': 'division', special: 'special', hyper: 'hyper' };
         localStorage.setItem(`keisanNinjaHighScore_${keys[operator]}`, score.toString());
     }
 
@@ -46,6 +47,13 @@ class Game {
             if (score >= 60)  return { name: 'けいさんじょうず', emoji: '😊', color: '#27ae60' };
             if (score >= 30)  return { name: 'がんばりや',       emoji: '💪', color: '#3498db' };
             return { name: 'ちょうせんちゅう', emoji: '🌱', color: '#9b59b6' };
+        }
+        if (operator === 'hyper') {
+            if (score >= 180) return { name: '超忍',  emoji: '⚡', color: '#a29bfe' };
+            if (score >= 140) return { name: '上忍',  emoji: '🥷', color: '#e74c3c' };
+            if (score >= 100) return { name: '中忍',  emoji: '⚔️', color: '#f39c12' };
+            if (score >= 50)  return { name: '下忍',  emoji: '🌟', color: '#3498db' };
+            return { name: '見習い', emoji: '🌱', color: '#2ecc71' };
         }
         if (score >= 140) return { name: '上忍', emoji: '🥷', color: '#e74c3c' };
         if (score >= 100) return { name: '中忍', emoji: '⚔️', color: '#f39c12' };
@@ -60,7 +68,7 @@ class Game {
             { op: '×', label: '掛け算', symbol: '✕', color: '#e67e22' },
             { op: '÷', label: '割り算', symbol: '÷', color: '#8e44ad' },
         ];
-        const hsLabels = { intro: 'にゅうもん', '+': '足し算', '-': '引き算', '×': '掛け算', '÷': '割り算', special: 'スペシャル' };
+        const hsLabels = { intro: 'にゅうもん', '+': '足し算', '-': '引き算', '×': '掛け算', '÷': '割り算', special: 'スペシャル', hyper: 'ハイパー' };
 
         this.app.innerHTML = `
             <div class="screen mode-select-screen">
@@ -84,6 +92,13 @@ class Game {
                     `).join('')}
                 </div>
                 <button class="special-mode-btn" data-op="special">✨ スペシャル</button>
+                <button class="hyper-mode-btn" data-op="hyper">
+                    <span class="hyper-icon">⚡</span>
+                    <span class="hyper-text">
+                        <span class="hyper-label">ハイパー</span>
+                        <span class="hyper-desc">インド式 × 虫食い算</span>
+                    </span>
+                </button>
                 <div class="hs-panel">
                     <p class="hs-heading">ハイスコア</p>
                     <div class="hs-grid">
@@ -109,7 +124,7 @@ class Game {
     startGame() {
         this.score = 0;
         this.questionCount = 0;
-        this.timeLimit = this.currentOperator === 'intro' ? 8 : 5;
+        this.timeLimit = this.currentOperator === 'intro' ? 8 : this.currentOperator === 'hyper' ? 7 : 5;
         this.totalTimeLeft = this.totalTimeLimit;
         this.isPlaying = true;
         this.sounds.start.play().catch(() => {});
@@ -119,7 +134,7 @@ class Game {
     }
 
     renderGameScreen() {
-        const maxQ = this.currentOperator === 'special' ? 45 : this.currentOperator === 'intro' ? 10 : 15;
+        const maxQ = this.currentOperator === 'special' ? 45 : this.currentOperator === 'intro' ? 10 : this.currentOperator === 'hyper' ? 20 : 15;
         this.app.innerHTML = `
             <div class="screen game-screen">
                 <div class="game-header">
@@ -149,7 +164,7 @@ class Game {
 
     showNextQuestion() {
         if (!this.isPlaying) return;
-        const maxQ = this.currentOperator === 'special' ? 45 : this.currentOperator === 'intro' ? 10 : 15;
+        const maxQ = this.currentOperator === 'special' ? 45 : this.currentOperator === 'intro' ? 10 : this.currentOperator === 'hyper' ? 20 : 15;
 
         if (this.questionCount >= maxQ) {
             this.endGame();
@@ -184,6 +199,24 @@ class Game {
             const num1 = Math.floor(Math.random() * 9) + 1;
             const num2 = Math.floor(Math.random() * 9) + 1;
             return { text: `${num1} ＋ ${num2} ＝ ？`, answer: num1 + num2 };
+        }
+
+        if (this.currentOperator === 'hyper') {
+            if (Math.random() < 0.5) {
+                // インド式: 11〜19 × 11〜19
+                const num1 = Math.floor(Math.random() * 9) + 11;
+                const num2 = Math.floor(Math.random() * 9) + 11;
+                return { text: `${num1} × ${num2} ＝ ？`, answer: num1 * num2 };
+            } else {
+                // 虫食い算: a × ？ ＝ c または ？ × b ＝ c
+                const a = Math.floor(Math.random() * 8) + 2;
+                const b = Math.floor(Math.random() * 8) + 2;
+                if (Math.random() < 0.5) {
+                    return { text: `${a} × ？ ＝ ${a * b}`, answer: b };
+                } else {
+                    return { text: `？ × ${b} ＝ ${a * b}`, answer: a };
+                }
+            }
         }
 
         const difficulty = Math.min(Math.floor(this.score / 20), 5);
@@ -282,6 +315,7 @@ class Game {
         if (bar) {
             bar.classList.remove('running');
             void bar.offsetWidth;
+            bar.style.animationDuration = `${this.timeLimit}s`;
             bar.classList.add('running');
         }
         this.questionTimer = setTimeout(() => {
