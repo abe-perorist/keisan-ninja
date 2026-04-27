@@ -20,7 +20,8 @@ class Game {
         Object.values(this.sounds).forEach(s => s.load());
 
         this.highScores = {
-            intro: this.loadHighScore('intro'),
+            'intro-add': this.loadHighScore('intro-add'),
+            'intro-sub': this.loadHighScore('intro-sub'),
             '+': this.loadHighScore('addition'),
             '-': this.loadHighScore('subtraction'),
             '×': this.loadHighScore('multiplication'),
@@ -38,12 +39,12 @@ class Game {
     }
 
     saveHighScore(operator, score) {
-        const keys = { intro: 'intro', '+': 'addition', '-': 'subtraction', '×': 'multiplication', '÷': 'division', special: 'special', hyper: 'hyper', master: 'master' };
+        const keys = { 'intro-add': 'intro-add', 'intro-sub': 'intro-sub', '+': 'addition', '-': 'subtraction', '×': 'multiplication', '÷': 'division', special: 'special', hyper: 'hyper', master: 'master' };
         localStorage.setItem(`keisanNinjaHighScore_${keys[operator]}`, score.toString());
     }
 
     getRankInfo(score, operator) {
-        if (operator === 'intro') {
+        if (operator === 'intro-add' || operator === 'intro-sub') {
             if (score >= 90)  return { name: 'けいさんめいじん', emoji: '🌟', color: '#f39c12' };
             if (score >= 60)  return { name: 'けいさんじょうず', emoji: '😊', color: '#27ae60' };
             if (score >= 30)  return { name: 'がんばりや',       emoji: '💪', color: '#3498db' };
@@ -76,7 +77,7 @@ class Game {
             { op: '×', label: '掛け算', symbol: '✕', color: '#e67e22' },
             { op: '÷', label: '割り算', symbol: '÷', color: '#8e44ad' },
         ];
-        const hsLabels = { intro: 'にゅうもん', '+': '足し算', '-': '引き算', '×': '掛け算', '÷': '割り算', special: 'スペシャル', hyper: 'ハイパー', master: 'マスター' };
+        const hsLabels = { 'intro-add': 'にゅうもん＋', 'intro-sub': 'にゅうもん－', '+': '足し算', '-': '引き算', '×': '掛け算', '÷': '割り算', special: 'スペシャル', hyper: 'ハイパー', master: 'マスター' };
 
         this.app.innerHTML = `
             <div class="screen mode-select-screen">
@@ -84,13 +85,22 @@ class Game {
                     <div class="title-logo">🥷</div>
                     <h1 class="game-title">計算忍者</h1>
                 </div>
-                <button class="intro-mode-btn" data-op="intro">
-                    <span class="intro-icon">🌸</span>
-                    <span class="intro-text">
-                        <span class="intro-label">にゅうもん編</span>
-                        <span class="intro-desc">たしざん ＆ ひきざん（虫食い）</span>
-                    </span>
-                </button>
+                <div class="intro-grid">
+                    <button class="intro-mode-btn" data-op="intro-add">
+                        <span class="intro-icon">🌸</span>
+                        <span class="intro-text">
+                            <span class="intro-label">にゅうもん たしざん</span>
+                            <span class="intro-desc">1けた たしざん</span>
+                        </span>
+                    </button>
+                    <button class="intro-mode-btn" data-op="intro-sub">
+                        <span class="intro-icon">🌼</span>
+                        <span class="intro-text">
+                            <span class="intro-label">にゅうもん ひきざん</span>
+                            <span class="intro-desc">1けた ひきざん（虫食い）</span>
+                        </span>
+                    </button>
+                </div>
                 <div class="mode-grid">
                     ${modes.map(m => `
                         <button class="mode-btn" data-op="${m.op}" style="--c:${m.color}">
@@ -139,8 +149,9 @@ class Game {
     startGame() {
         this.score = 0;
         this.questionCount = 0;
-        this.timeLimit = this.currentOperator === 'intro' ? 15 : this.currentOperator === 'hyper' ? 7 : this.currentOperator === 'master' ? 30 : 5;
-        this.totalTimeLeft = this.currentOperator === 'intro' ? 120 : this.totalTimeLimit;
+        const isIntro = this.currentOperator === 'intro-add' || this.currentOperator === 'intro-sub';
+        this.timeLimit = isIntro ? 30 : this.currentOperator === 'hyper' ? 7 : this.currentOperator === 'master' ? 30 : 5;
+        this.totalTimeLeft = isIntro ? 120 : this.totalTimeLimit;
         this.isPlaying = true;
         this.sounds.start.play().catch(() => {});
         this.renderGameScreen();
@@ -149,7 +160,7 @@ class Game {
     }
 
     renderGameScreen() {
-        const maxQ = this.currentOperator === 'special' ? 45 : this.currentOperator === 'intro' ? 10 : this.currentOperator === 'hyper' || this.currentOperator === 'master' ? 20 : 15;
+        const maxQ = this.currentOperator === 'special' ? 45 : this.currentOperator === 'intro-add' || this.currentOperator === 'intro-sub' ? 10 : this.currentOperator === 'hyper' || this.currentOperator === 'master' ? 20 : 15;
         this.app.innerHTML = `
             <div class="screen game-screen">
                 <div class="game-header">
@@ -179,7 +190,7 @@ class Game {
 
     showNextQuestion() {
         if (!this.isPlaying) return;
-        const maxQ = this.currentOperator === 'special' ? 45 : this.currentOperator === 'intro' ? 10 : this.currentOperator === 'hyper' || this.currentOperator === 'master' ? 20 : 15;
+        const maxQ = this.currentOperator === 'special' ? 45 : this.currentOperator === 'intro-add' || this.currentOperator === 'intro-sub' ? 10 : this.currentOperator === 'hyper' || this.currentOperator === 'master' ? 20 : 15;
 
         if (this.questionCount >= maxQ) {
             this.endGame();
@@ -210,16 +221,16 @@ class Game {
     }
 
     generateQuestion() {
-        if (this.currentOperator === 'intro') {
-            if (Math.random() < 0.5) {
-                const num1 = Math.floor(Math.random() * 9) + 1;
-                const num2 = Math.floor(Math.random() * 9) + 1;
-                return { text: `${num1} ＋ ${num2} ＝ ？`, answer: num1 + num2 };
-            } else {
-                const a = Math.floor(Math.random() * 8) + 2;
-                const answer = Math.floor(Math.random() * (a - 1)) + 1;
-                return { text: `${a} ー ？ ＝ ${a - answer}`, answer };
-            }
+        if (this.currentOperator === 'intro-add') {
+            const num1 = Math.floor(Math.random() * 9) + 1;
+            const num2 = Math.floor(Math.random() * 9) + 1;
+            return { text: `${num1} ＋ ${num2} ＝ ？`, answer: num1 + num2 };
+        }
+
+        if (this.currentOperator === 'intro-sub') {
+            const a = Math.floor(Math.random() * 8) + 2;
+            const answer = Math.floor(Math.random() * (a - 1)) + 1;
+            return { text: `${a} ー ？ ＝ ${a - answer}`, answer };
         }
 
         if (this.currentOperator === 'master') {
