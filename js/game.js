@@ -27,6 +27,7 @@ class Game {
             '÷': this.loadHighScore('division'),
             special: this.loadHighScore('special'),
             hyper: this.loadHighScore('hyper'),
+            master: this.loadHighScore('master'),
         };
 
         this.renderModeSelect();
@@ -37,7 +38,7 @@ class Game {
     }
 
     saveHighScore(operator, score) {
-        const keys = { intro: 'intro', '+': 'addition', '-': 'subtraction', '×': 'multiplication', '÷': 'division', special: 'special', hyper: 'hyper' };
+        const keys = { intro: 'intro', '+': 'addition', '-': 'subtraction', '×': 'multiplication', '÷': 'division', special: 'special', hyper: 'hyper', master: 'master' };
         localStorage.setItem(`keisanNinjaHighScore_${keys[operator]}`, score.toString());
     }
 
@@ -55,6 +56,13 @@ class Game {
             if (score >= 50)  return { name: '下忍',  emoji: '🌟', color: '#3498db' };
             return { name: '見習い', emoji: '🌱', color: '#2ecc71' };
         }
+        if (operator === 'master') {
+            if (score >= 180) return { name: '計算神', emoji: '👑', color: '#f39c12' };
+            if (score >= 140) return { name: '計算仙人', emoji: '🔮', color: '#a29bfe' };
+            if (score >= 100) return { name: '上忍',   emoji: '🥷', color: '#e74c3c' };
+            if (score >= 60)  return { name: '中忍',   emoji: '⚔️', color: '#3498db' };
+            return { name: '下忍', emoji: '🌟', color: '#2ecc71' };
+        }
         if (score >= 140) return { name: '上忍', emoji: '🥷', color: '#e74c3c' };
         if (score >= 100) return { name: '中忍', emoji: '⚔️', color: '#f39c12' };
         if (score >= 50)  return { name: '下忍', emoji: '🌟', color: '#3498db' };
@@ -68,7 +76,7 @@ class Game {
             { op: '×', label: '掛け算', symbol: '✕', color: '#e67e22' },
             { op: '÷', label: '割り算', symbol: '÷', color: '#8e44ad' },
         ];
-        const hsLabels = { intro: 'にゅうもん', '+': '足し算', '-': '引き算', '×': '掛け算', '÷': '割り算', special: 'スペシャル', hyper: 'ハイパー' };
+        const hsLabels = { intro: 'にゅうもん', '+': '足し算', '-': '引き算', '×': '掛け算', '÷': '割り算', special: 'スペシャル', hyper: 'ハイパー', master: 'マスター' };
 
         this.app.innerHTML = `
             <div class="screen mode-select-screen">
@@ -99,6 +107,13 @@ class Game {
                         <span class="hyper-desc">インド式 × 虫食い算</span>
                     </span>
                 </button>
+                <button class="master-mode-btn" data-op="master">
+                    <span class="master-icon">👑</span>
+                    <span class="master-text">
+                        <span class="master-label">マスター</span>
+                        <span class="master-desc">2桁虫食い × 複合演算</span>
+                    </span>
+                </button>
                 <div class="hs-panel">
                     <p class="hs-heading">ハイスコア</p>
                     <div class="hs-grid">
@@ -124,7 +139,7 @@ class Game {
     startGame() {
         this.score = 0;
         this.questionCount = 0;
-        this.timeLimit = this.currentOperator === 'intro' ? 8 : this.currentOperator === 'hyper' ? 7 : 5;
+        this.timeLimit = this.currentOperator === 'intro' ? 8 : this.currentOperator === 'hyper' ? 7 : this.currentOperator === 'master' ? 8 : 5;
         this.totalTimeLeft = this.totalTimeLimit;
         this.isPlaying = true;
         this.sounds.start.play().catch(() => {});
@@ -134,7 +149,7 @@ class Game {
     }
 
     renderGameScreen() {
-        const maxQ = this.currentOperator === 'special' ? 45 : this.currentOperator === 'intro' ? 10 : this.currentOperator === 'hyper' ? 20 : 15;
+        const maxQ = this.currentOperator === 'special' ? 45 : this.currentOperator === 'intro' ? 10 : this.currentOperator === 'hyper' || this.currentOperator === 'master' ? 20 : 15;
         this.app.innerHTML = `
             <div class="screen game-screen">
                 <div class="game-header">
@@ -164,7 +179,7 @@ class Game {
 
     showNextQuestion() {
         if (!this.isPlaying) return;
-        const maxQ = this.currentOperator === 'special' ? 45 : this.currentOperator === 'intro' ? 10 : this.currentOperator === 'hyper' ? 20 : 15;
+        const maxQ = this.currentOperator === 'special' ? 45 : this.currentOperator === 'intro' ? 10 : this.currentOperator === 'hyper' || this.currentOperator === 'master' ? 20 : 15;
 
         if (this.questionCount >= maxQ) {
             this.endGame();
@@ -204,6 +219,25 @@ class Game {
                 const a = Math.floor(Math.random() * 8) + 2;
                 const answer = Math.floor(Math.random() * (a - 1)) + 1;
                 return { text: `${a} ー ？ ＝ ${a - answer}`, answer };
+            }
+        }
+
+        if (this.currentOperator === 'master') {
+            const r = (lo, hi) => Math.floor(Math.random() * (hi - lo + 1)) + lo;
+            if (Math.random() < 0.5) {
+                // 2桁の虫食い算
+                const t = Math.floor(Math.random() * 4);
+                if (t === 0) { const a = r(10,50), b = r(10,50); return { text: `${a} ＋ ？ ＝ ${a+b}`, answer: b }; }
+                if (t === 1) { const a = r(10,50), b = r(10,50); return { text: `？ ＋ ${b} ＝ ${a+b}`, answer: a }; }
+                if (t === 2) { const a = r(21,80), b = r(10, Math.min(a-1,40)); return { text: `${a} ー ？ ＝ ${a-b}`, answer: b }; }
+                const b = r(10,40), c = r(10,40); return { text: `？ ー ${b} ＝ ${c}`, answer: b+c };
+            } else {
+                // 複合演算（かけ算・わり算優先）
+                const t = Math.floor(Math.random() * 4);
+                if (t === 0) { const a = r(2,9), b = r(2,9), c = r(1,20); return { text: `${a} × ${b} ＋ ${c} ＝ ？`, answer: a*b+c }; }
+                if (t === 1) { const a = r(2,9), b = r(2,9), c = r(1,a*b-1); return { text: `${a} × ${b} ー ${c} ＝ ？`, answer: a*b-c }; }
+                if (t === 2) { const a = r(1,20), b = r(2,9), c = r(2,9); return { text: `${a} ＋ ${b} × ${c} ＝ ？`, answer: a+b*c }; }
+                const b = r(2,9), q = r(2,9), c = r(1,20); return { text: `${b*q} ÷ ${b} ＋ ${c} ＝ ？`, answer: q+c };
             }
         }
 
