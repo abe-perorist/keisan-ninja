@@ -139,8 +139,8 @@ class Game {
     startGame() {
         this.score = 0;
         this.questionCount = 0;
-        this.timeLimit = this.currentOperator === 'intro' ? 8 : this.currentOperator === 'hyper' ? 7 : this.currentOperator === 'master' ? 8 : 5;
-        this.totalTimeLeft = this.totalTimeLimit;
+        this.timeLimit = this.currentOperator === 'intro' ? 15 : this.currentOperator === 'hyper' ? 7 : this.currentOperator === 'master' ? 8 : 5;
+        this.totalTimeLeft = this.currentOperator === 'intro' ? 120 : this.totalTimeLimit;
         this.isPlaying = true;
         this.sounds.start.play().catch(() => {});
         this.renderGameScreen();
@@ -162,7 +162,7 @@ class Game {
                     </div>
                     <div class="stat-box right">
                         <span class="stat-label">残り</span>
-                        <span class="stat-value blue" id="timerVal">60</span><span class="stat-unit">秒</span>
+                        <span class="stat-value blue" id="timerVal">${this.totalTimeLeft}</span><span class="stat-unit">秒</span>
                     </div>
                 </div>
                 <div class="q-timer-wrap">
