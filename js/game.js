@@ -33,7 +33,33 @@ class Game {
             master: this.loadHighScore('master'),
         };
 
-        this.renderModeSelect();
+        if (!localStorage.getItem('keisanNinjaIntroSeen')) {
+            this.showSenseiIntro();
+        } else {
+            this.renderModeSelect();
+        }
+    }
+
+    showSenseiIntro() {
+        this.app.innerHTML = `
+            <div class="app-container">
+                <nav class="global-nav">
+                    <div class="global-nav-title">⛩️ 計算道場 (Keisan Dojo)</div>
+                </nav>
+                <div class="screen sensei-intro-screen">
+                    <div class="sensei-character">🦉</div>
+                    <div class="dialogue-box">
+                        <p>よく来たな、見習い忍者よ！<br>わしは計算道場の師匠、Senseiじゃ。</p>
+                        <p>ここ「The Map（ワールドマップ）」から<br>好きな修行場を選んで忍術を磨くのじゃ！</p>
+                        <button id="btnStartJourney" class="rbtn rbtn-retry" style="margin-top: 10px;">The Mapへ進む (Start Training)</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.getElementById('btnStartJourney').addEventListener('click', () => {
+            localStorage.setItem('keisanNinjaIntroSeen', 'true');
+            this.renderModeSelect();
+        });
     }
 
     loadHighScore(key) {
@@ -81,13 +107,35 @@ class Game {
         ];
         const hsLabels = { 'intro-add': 'にゅうもん＋', 'intro-sub': 'にゅうもん－', 'intro-add-blank': 'にゅうもん＋？', 'intro-sub-blank': 'にゅうもん－？', '+': '足し算', '-': '引き算', '×': '掛け算', '÷': '割り算', special: 'スペシャル', hyper: 'ハイパー', master: 'マスター' };
 
+        const totalScore = Object.values(this.highScores).reduce((a, b) => a + b, 0);
+        let globalRank = { name: '見習い (Apprentice)', emoji: '🌱' };
+        if (totalScore >= 1000) globalRank = { name: '計算神 (Math God)', emoji: '👑' };
+        else if (totalScore >= 500) globalRank = { name: '上忍 (Jonin)', emoji: '🥷' };
+        else if (totalScore >= 200) globalRank = { name: '中忍 (Chunin)', emoji: '⚔️' };
+        else if (totalScore >= 50) globalRank = { name: '下忍 (Genin)', emoji: '🌟' };
+
         this.app.innerHTML = `
-            <div class="screen mode-select-screen">
-                <div class="title-area">
-                    <div class="title-logo">🥷</div>
-                    <h1 class="game-title">計算忍者</h1>
-                </div>
-                <div class="intro-grid">
+            <div class="app-container">
+                <nav class="global-nav">
+                    <div class="global-nav-title">🗺️ The Map (Dojo Hub)</div>
+                </nav>
+                <div class="screen mode-select-screen">
+                    <div class="title-area">
+                        <div class="title-logo">🥷</div>
+                        <h1 class="game-title">計算忍者</h1>
+                        <p style="color:var(--gold); font-weight:bold; margin-top:8px;">修行の地を選んでくだされ</p>
+                    </div>
+
+                    <div class="hub-profile">
+                        <div class="profile-rank-emoji">${globalRank.emoji}</div>
+                        <div class="profile-info">
+                            <div class="profile-label">現在のランク (Current Rank)</div>
+                            <div class="profile-name">${globalRank.name}</div>
+                            <div class="profile-score">トータル修行値: ${totalScore}pt</div>
+                        </div>
+                    </div>
+
+                    <div class="intro-grid">
                     <button class="intro-mode-btn" data-op="intro-add">
                         <span class="intro-icon">🌸</span>
                         <span class="intro-text">
@@ -151,6 +199,7 @@ class Game {
                         `).join('')}
                     </div>
                 </div>
+                </div>
             </div>
         `;
 
@@ -171,6 +220,14 @@ class Game {
         this.isPlaying = true;
         this.sounds.start.play().catch(() => {});
         this.renderGameScreen();
+
+        document.getElementById('btnExitDojo').addEventListener('click', () => {
+            this.isPlaying = false;
+            clearTimeout(this.questionTimer);
+            clearInterval(this.totalTimerInterval);
+            this.renderModeSelect();
+        });
+
         this.startTotalTimer();
         this.showNextQuestion();
     }
@@ -178,8 +235,13 @@ class Game {
     renderGameScreen() {
         const maxQ = this.currentOperator === 'special' ? 45 : ['intro-add', 'intro-sub', 'intro-add-blank', 'intro-sub-blank'].includes(this.currentOperator) ? 10 : this.currentOperator === 'hyper' || this.currentOperator === 'master' ? 20 : 15;
         this.app.innerHTML = `
-            <div class="screen game-screen">
-                <div class="game-header">
+            <div class="app-container">
+                <nav class="global-nav">
+                    <div class="global-nav-title">⚔️ 闘技場 (Battle Mode)</div>
+                    <button id="btnExitDojo" class="btn-exit-dojo">🚪 道場へ戻る (Return to Dojo)</button>
+                </nav>
+                <div class="screen game-screen">
+                    <div class="game-header">
                     <div class="stat-box">
                         <span class="stat-label">スコア</span>
                         <span class="stat-value gold" id="scoreVal">0</span>
@@ -200,6 +262,7 @@ class Game {
                     <div class="feedback" id="feedback"></div>
                 </div>
                 <div class="choices-area" id="choicesArea"></div>
+                </div>
             </div>
         `;
     }
@@ -366,6 +429,10 @@ class Game {
         });
 
         const fb = document.getElementById('feedback');
+        const effectContainer = document.createElement('div');
+        effectContainer.className = 'ninjutsu-effect';
+        this.app.appendChild(effectContainer);
+
         if (selected === correct) {
             this.score += 10;
             if (this.score > this.highScores[this.currentOperator]) {
@@ -382,11 +449,19 @@ class Game {
             fb.className = 'feedback fb-correct';
             this.sounds.correct.currentTime = 0;
             this.sounds.correct.play().catch(() => {});
+
+            effectContainer.classList.add('effect-shuriken');
+            effectContainer.innerHTML = '💥';
+            setTimeout(() => effectContainer.remove(), 1000);
         } else {
             fb.textContent = '❌ ざんねん';
             fb.className = 'feedback fb-wrong';
             this.sounds.incorrect.currentTime = 0;
             this.sounds.incorrect.play().catch(() => {});
+
+            effectContainer.classList.add('effect-smoke');
+            effectContainer.innerHTML = '💨';
+            setTimeout(() => effectContainer.remove(), 1000);
         }
 
         setTimeout(() => this.showNextQuestion(), 800);
@@ -435,21 +510,28 @@ class Game {
         const isRecord = this.score > 0 && this.score >= this.highScores[this.currentOperator];
 
         this.app.innerHTML = `
-            <div class="screen result-screen">
-                <div class="rank-emoji">${rank.emoji}</div>
-                <div class="rank-name" style="color:${rank.color}">${rank.name}</div>
-                <div class="score-label">スコア</div>
-                <div class="final-score">${this.score}<small>点</small></div>
-                ${isRecord ? '<div class="new-record">🎉 ハイスコア更新！</div>' : ''}
-                <div class="result-btns">
-                    <button class="rbtn rbtn-retry">もう一度</button>
-                    <button class="rbtn rbtn-back">もどる</button>
+            <div class="app-container">
+                <nav class="global-nav">
+                    <div class="global-nav-title">📜 修行結果 (Training Results)</div>
+                    <button id="btnExitDojoResult" class="btn-exit-dojo">🚪 道場へ戻る (Return to Dojo)</button>
+                </nav>
+                <div class="screen result-screen">
+                    <div class="rank-emoji">${rank.emoji}</div>
+                    <div class="rank-name" style="color:${rank.color}">${rank.name}</div>
+                    <div class="score-label">スコア</div>
+                    <div class="final-score">${this.score}<small>点</small></div>
+                    ${isRecord ? '<div class="new-record">🎉 ハイスコア更新！</div>' : ''}
+                    <div class="result-btns">
+                        <button class="rbtn rbtn-retry">もう一度</button>
+                        <button class="rbtn rbtn-back">もどる</button>
+                    </div>
                 </div>
             </div>
         `;
 
         this.app.querySelector('.rbtn-retry').addEventListener('click', () => this.startGame());
         this.app.querySelector('.rbtn-back').addEventListener('click', () => this.renderModeSelect());
+        this.app.querySelector('#btnExitDojoResult').addEventListener('click', () => this.renderModeSelect());
     }
 }
 

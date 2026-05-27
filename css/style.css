@@ -39,7 +39,7 @@ body {
 
 /* ===== SCREEN BASE ===== */
 .screen {
-    min-height: 100dvh;
+    flex: 1;
     display: flex;
     flex-direction: column;
     animation: screenIn 0.25s ease;
@@ -48,6 +48,161 @@ body {
 @keyframes screenIn {
     from { opacity: 0; transform: translateY(12px); }
     to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== APP CONTAINER & GLOBAL NAV ===== */
+.app-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+    width: 100%;
+}
+
+.global-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    background: #000;
+    border-bottom: 2px solid var(--gold);
+    width: 100%;
+    z-index: 100;
+}
+
+.global-nav-title {
+    font-size: 1.1rem;
+    color: var(--gold);
+    font-weight: bold;
+}
+
+.btn-exit-dojo {
+    background: rgba(231,76,60,0.1);
+    border: 1px solid var(--red);
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.2s;
+}
+
+.btn-exit-dojo:hover, .btn-exit-dojo:active {
+    background: var(--red);
+}
+
+/* ===== SENSEI INTRO ===== */
+.sensei-intro-screen {
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(to bottom, #1a2a6c, #b21f1f, #fdbb2d);
+    padding: 20px;
+}
+
+.sensei-character {
+    font-size: 7rem;
+    margin-bottom: 20px;
+    animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-15px); }
+}
+
+.dialogue-box {
+    background: rgba(0, 0, 0, 0.8);
+    border: 3px solid var(--gold);
+    border-radius: 16px;
+    padding: 24px;
+    text-align: center;
+    color: white;
+    font-size: 1.1rem;
+    line-height: 1.6;
+    max-width: 90%;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+}
+
+.dialogue-box p {
+    margin-bottom: 16px;
+}
+
+/* ===== NINJUTSU EFFECTS ===== */
+.ninjutsu-effect {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 5rem;
+    font-weight: bold;
+    pointer-events: none;
+    z-index: 9999;
+    text-shadow: 0 0 20px rgba(255,255,255,0.8);
+}
+
+.effect-shuriken {
+    color: var(--gold);
+    animation: shurikenStrike 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.effect-smoke {
+    color: #fff;
+    animation: smokeBomb 1s ease-out forwards;
+}
+
+@keyframes shurikenStrike {
+    0% { transform: translate(-50%, -50%) scale(0) rotate(0deg); opacity: 1; }
+    50% { transform: translate(-50%, -50%) scale(1.5) rotate(720deg); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(2.5) rotate(1080deg); opacity: 0; }
+}
+
+@keyframes smokeBomb {
+    0% { transform: translate(-50%, -50%) scale(0.5); opacity: 1; text-shadow: 0 0 40px #fff; }
+    100% { transform: translate(-50%, -50%) scale(4); opacity: 0; text-shadow: 0 0 100px #fff; }
+}
+
+/* ===== HUB PROFILE ===== */
+.hub-profile {
+    display: flex;
+    align-items: center;
+    background: rgba(0,0,0,0.4);
+    border: 2px solid var(--gold);
+    border-radius: 16px;
+    padding: 12px 20px;
+    margin: 4px 0 16px;
+    width: 100%;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+
+.profile-rank-emoji {
+    font-size: 3rem;
+    margin-right: 16px;
+    text-shadow: 0 0 10px rgba(243,156,18,0.5);
+}
+
+.profile-info {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.profile-label {
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.profile-name {
+    font-size: 1.4rem;
+    font-weight: 900;
+    color: var(--gold);
+    margin: 2px 0;
+}
+
+.profile-score {
+    font-size: 0.9rem;
+    color: var(--text);
+    font-weight: bold;
 }
 
 /* ===== MODE SELECT ===== */
