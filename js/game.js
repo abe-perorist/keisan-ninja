@@ -383,6 +383,13 @@ class Game {
             this.sounds.correct.currentTime = 0;
             this.sounds.correct.play().catch(() => {});
         } else {
+            this.score = Math.max(0, this.score - 10);
+            const sv = document.getElementById('scoreVal');
+            if (sv) {
+                sv.textContent = this.score;
+                sv.classList.add('pop');
+                setTimeout(() => sv.classList.remove('pop'), 400);
+            }
             fb.textContent = '❌ ざんねん';
             fb.className = 'feedback fb-wrong';
             this.sounds.incorrect.currentTime = 0;
