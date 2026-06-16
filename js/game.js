@@ -40,6 +40,31 @@ class Game {
         return parseInt(localStorage.getItem(`keisanNinjaHighScore_${key}`), 10) || 0;
     }
 
+    loadFailedProblems() {
+        try {
+            return JSON.parse(localStorage.getItem('keisanNinjaFailedProblems')) || [];
+        } catch {
+            return [];
+        }
+    }
+
+    saveFailedProblem(q) {
+        let failed = this.loadFailedProblems();
+        // check if exact text already exists, if not, add it
+        if (!failed.some(f => f.text === q.text)) {
+            failed.push(q);
+            // Limit to last 200 failed problems
+            if (failed.length > 200) failed.shift();
+            localStorage.setItem('keisanNinjaFailedProblems', JSON.stringify(failed));
+        }
+    }
+
+    removeFailedProblem(q) {
+        let failed = this.loadFailedProblems();
+        failed = failed.filter(f => f.text !== q.text);
+        localStorage.setItem('keisanNinjaFailedProblems', JSON.stringify(failed));
+    }
+
     saveHighScore(operator, score) {
         const keys = { 'intro-add': 'intro-add', 'intro-sub': 'intro-sub', 'intro-add-blank': 'intro-add-blank', 'intro-sub-blank': 'intro-sub-blank', '+': 'addition', '-': 'subtraction', '×': 'multiplication', '÷': 'division', special: 'special', hyper: 'hyper', master: 'master' };
         localStorage.setItem(`keisanNinjaHighScore_${keys[operator]}`, score.toString());
@@ -57,6 +82,14 @@ class Game {
             if (score >= 140) return { name: '上忍',  emoji: '🥷', color: '#e74c3c' };
             if (score >= 100) return { name: '中忍',  emoji: '⚔️', color: '#f39c12' };
             if (score >= 50)  return { name: '下忍',  emoji: '🌟', color: '#3498db' };
+            return { name: '見習い', emoji: '🌱', color: '#2ecc71' };
+        }
+        if (operator === 'special') {
+            if (score >= 180) return { name: '計算神', emoji: '👑', color: '#f39c12' };
+            if (score >= 140) return { name: '計算仙人', emoji: '🔮', color: '#a29bfe' };
+            if (score >= 100) return { name: '上忍',   emoji: '🥷', color: '#e74c3c' };
+            if (score >= 60)  return { name: '中忍',   emoji: '⚔️', color: '#3498db' };
+            if (score >= 30)  return { name: '下忍',   emoji: '🌟', color: '#3498db' };
             return { name: '見習い', emoji: '🌱', color: '#2ecc71' };
         }
         if (operator === 'master') {
@@ -79,7 +112,7 @@ class Game {
             { op: '×', label: '掛け算', symbol: '✕', color: '#e67e22' },
             { op: '÷', label: '割り算', symbol: '÷', color: '#8e44ad' },
         ];
-        const hsLabels = { 'intro-add': 'にゅうもん＋', 'intro-sub': 'にゅうもん－', 'intro-add-blank': 'にゅうもん＋？', 'intro-sub-blank': 'にゅうもん－？', '+': '足し算', '-': '引き算', '×': '掛け算', '÷': '割り算', special: 'スペシャル', hyper: 'ハイパー', master: 'マスター' };
+        const hsLabels = { 'intro-add': 'にゅうもん＋', 'intro-sub': 'にゅうもん－', 'intro-add-blank': 'にゅうもん＋？', 'intro-sub-blank': 'にゅうもん－？', '+': '足し算', '-': '引き算', '×': '掛け算', '÷': '割り算', special: '特訓', hyper: 'ハイパー', master: 'マスター' };
 
         this.app.innerHTML = `
             <div class="screen mode-select-screen">
@@ -125,7 +158,7 @@ class Game {
                         </button>
                     `).join('')}
                 </div>
-                <button class="special-mode-btn" data-op="special">✨ スペシャル</button>
+                <button class="special-mode-btn" data-op="special">✨ 特訓</button>
                 <button class="hyper-mode-btn" data-op="hyper">
                     <span class="hyper-icon">⚡</span>
                     <span class="hyper-text">
@@ -165,6 +198,19 @@ class Game {
     startGame() {
         this.score = 0;
         this.questionCount = 0;
+        
+        if (this.currentOperator === 'special') {
+            this.trainingPool = this.loadFailedProblems();
+            this.trainingPool.sort(() => Math.random() - 0.5);
+            if (this.trainingPool.length > 0) {
+                this.sessionMaxQ = Math.min(45, this.trainingPool.length);
+            } else {
+                this.sessionMaxQ = 45;
+            }
+        } else {
+            this.sessionMaxQ = ['intro-add', 'intro-sub', 'intro-add-blank', 'intro-sub-blank'].includes(this.currentOperator) ? 10 : this.currentOperator === 'hyper' || this.currentOperator === 'master' ? 20 : 15;
+        }
+
         const isIntro = ['intro-add', 'intro-sub', 'intro-add-blank', 'intro-sub-blank'].includes(this.currentOperator);
         this.timeLimit = isIntro ? 30 : this.currentOperator === 'hyper' ? 7 : this.currentOperator === 'master' ? 30 : 5;
         this.totalTimeLeft = isIntro ? 120 : this.totalTimeLimit;
@@ -176,7 +222,7 @@ class Game {
     }
 
     renderGameScreen() {
-        const maxQ = this.currentOperator === 'special' ? 45 : ['intro-add', 'intro-sub', 'intro-add-blank', 'intro-sub-blank'].includes(this.currentOperator) ? 10 : this.currentOperator === 'hyper' || this.currentOperator === 'master' ? 20 : 15;
+        const maxQ = this.sessionMaxQ;
         const isBlankTheme = ['intro-add-blank', 'intro-sub-blank'].includes(this.currentOperator);
         this.app.innerHTML = `
             <div class="screen game-screen${isBlankTheme ? ' blank-theme' : ''}">
@@ -207,7 +253,7 @@ class Game {
 
     showNextQuestion() {
         if (!this.isPlaying) return;
-        const maxQ = this.currentOperator === 'special' ? 45 : ['intro-add', 'intro-sub', 'intro-add-blank', 'intro-sub-blank'].includes(this.currentOperator) ? 10 : this.currentOperator === 'hyper' || this.currentOperator === 'master' ? 20 : 15;
+        const maxQ = this.sessionMaxQ;
 
         if (this.questionCount >= maxQ) {
             this.endGame();
@@ -215,6 +261,7 @@ class Game {
         }
 
         const q = this.generateQuestion();
+        this.currentQuestion = q;
         const colors = ['#e74c3c', '#f39c12', '#2980b9'];
         const choices = this.generateChoices(q.answer);
 
@@ -311,6 +358,9 @@ class Game {
         let num1, num2, answer, op;
 
         if (this.currentOperator === 'special') {
+            if (this.trainingPool && this.trainingPool.length > 0) {
+                return this.trainingPool.pop();
+            }
             const ops = ['+', '-', '×', '÷'];
             op = ops[Math.floor(Math.random() * ops.length)];
         } else {
@@ -368,6 +418,9 @@ class Game {
 
         const fb = document.getElementById('feedback');
         if (selected === correct) {
+            // Remove from failures on success in any mode (or just in special)
+            if (this.currentQuestion) this.removeFailedProblem(this.currentQuestion);
+
             this.score += 10;
             if (this.score > this.highScores[this.currentOperator]) {
                 this.highScores[this.currentOperator] = this.score;
@@ -391,6 +444,9 @@ class Game {
                 sv.classList.add('pop');
                 setTimeout(() => sv.classList.remove('pop'), 400);
             }
+            if (this.currentQuestion) {
+                this.saveFailedProblem(this.currentQuestion);
+            }
             fb.textContent = '❌ ざんねん';
             fb.className = 'feedback fb-wrong';
             this.sounds.incorrect.currentTime = 0;
@@ -410,6 +466,9 @@ class Game {
             bar.classList.add('running');
         }
         this.questionTimer = setTimeout(() => {
+            if (this.currentQuestion) {
+                this.saveFailedProblem(this.currentQuestion);
+            }
             this.sounds.incorrect.currentTime = 0;
             this.sounds.incorrect.play().catch(() => {});
             this.showNextQuestion();
