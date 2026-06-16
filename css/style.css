@@ -105,6 +105,18 @@ body {
     box-shadow: 0 1px 0 rgba(0,0,0,0.35);
 }
 
+.intro-mode-btn.blank-mode {
+    background: linear-gradient(135deg, #e67e22, #f39c12);
+}
+
+body:has(.game-screen.blank-theme),
+body:has(.result-screen.blank-theme) {
+    --bg: #1a0f00; 
+    --surface: #2e1a00;
+    --surface2: #3d2300;
+    background-color: var(--bg);
+}
+
 .intro-icon {
     font-size: 2.2rem;
     line-height: 1;
