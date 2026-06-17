@@ -102,15 +102,15 @@ class Game {
                             <span class="intro-desc">a－b＝？</span>
                         </span>
                     </button>
-                    <button class="intro-mode-btn" data-op="intro-add-blank">
-                        <span class="intro-icon">🌸</span>
+                    <button class="intro-mode-btn blank-mode" data-op="intro-add-blank">
+                        <span class="intro-icon">⭐</span>
                         <span class="intro-text">
                             <span class="intro-label">たしざん（虫食い）</span>
                             <span class="intro-desc">a＋？＝c</span>
                         </span>
                     </button>
-                    <button class="intro-mode-btn" data-op="intro-sub-blank">
-                        <span class="intro-icon">🌼</span>
+                    <button class="intro-mode-btn blank-mode" data-op="intro-sub-blank">
+                        <span class="intro-icon">⭐</span>
                         <span class="intro-text">
                             <span class="intro-label">ひきざん（虫食い）</span>
                             <span class="intro-desc">a－？＝c</span>
@@ -177,8 +177,9 @@ class Game {
 
     renderGameScreen() {
         const maxQ = this.currentOperator === 'special' ? 45 : ['intro-add', 'intro-sub', 'intro-add-blank', 'intro-sub-blank'].includes(this.currentOperator) ? 10 : this.currentOperator === 'hyper' || this.currentOperator === 'master' ? 20 : 15;
+        const isBlankTheme = ['intro-add-blank', 'intro-sub-blank'].includes(this.currentOperator);
         this.app.innerHTML = `
-            <div class="screen game-screen">
+            <div class="screen game-screen${isBlankTheme ? ' blank-theme' : ''}">
                 <div class="game-header">
                     <div class="stat-box">
                         <span class="stat-label">スコア</span>
@@ -434,8 +435,10 @@ class Game {
         const rank = this.getRankInfo(this.score, this.currentOperator);
         const isRecord = this.score > 0 && this.score >= this.highScores[this.currentOperator];
 
+        const isBlankTheme = ['intro-add-blank', 'intro-sub-blank'].includes(this.currentOperator);
+
         this.app.innerHTML = `
-            <div class="screen result-screen">
+            <div class="screen result-screen${isBlankTheme ? ' blank-theme' : ''}">
                 <div class="rank-emoji">${rank.emoji}</div>
                 <div class="rank-name" style="color:${rank.color}">${rank.name}</div>
                 <div class="score-label">スコア</div>
