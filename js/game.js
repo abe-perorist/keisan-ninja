@@ -21,6 +21,18 @@ class Game {
         };
         Object.values(this.sounds).forEach(s => s.load());
 
+        this.storyScrollsList = [
+            { rank: '見習い', emoji: '🌱', title: '風の巻物', text: '忍者の道場へようこそ！📜 ここからはじめての修行が始まる。基本の計算術をしっかり身につけるのじゃ！' },
+            { rank: '下忍', emoji: '🌟', title: '地の巻物', text: '最初の試練を乗り越えた！🌟 村人たちがお前の才能を認め始めた。計算の手裏剣をさらに磨き続けよ！' },
+            { rank: '中忍', emoji: '⚔️', title: '水の巻物', text: '数字の真の戦士！⚔️ より難しい任務を任されるようになった。速さと正確さがお前の最強の武器だ。' },
+            { rank: '上忍', emoji: '🥷', title: '火の巻物', text: '見事だ、精鋭の忍者よ！🥷 影の里はお前の素早い計算を頼りにしている。さらなる高みへ、奥義を極めよ。' },
+            { rank: '超忍', emoji: '⚡', title: '雷の巻物', text: '信じられない！その速さはまるで稲妻だ！⚡ お前は通常の限界を超え、超忍の境地へと達した。' },
+            { rank: '計算仙人', emoji: '🔮', title: '空の巻物', text: '宇宙の秘密を解き明かしたのじゃ。🔮 数学の古代巻物がお前の叡智に頭を垂れている。' },
+            { rank: '計算神', emoji: '👑', title: '天の巻物', text: 'これが最終章。👑 お前は計算神だ！すべての数字がお前の意思に従う。その伝説は永遠に語り継がれるであろう。📜' }
+        ];
+
+        this.unlockedScrolls = this.loadUnlockedScrolls();
+
         this.highScores = {
             'intro-add': this.loadHighScore('intro-add'),
             'intro-sub': this.loadHighScore('intro-sub'),
@@ -52,10 +64,8 @@ class Game {
 
     saveFailedProblem(q) {
         let failed = this.loadFailedProblems();
-        // check if exact text already exists, if not, add it
         if (!failed.some(f => f.text === q.text)) {
             failed.push(q);
-            // Limit to last 200 failed problems
             if (failed.length > 200) failed.shift();
             localStorage.setItem('keisanNinjaFailedProblems', JSON.stringify(failed));
         }
@@ -65,6 +75,19 @@ class Game {
         let failed = this.loadFailedProblems();
         failed = failed.filter(f => f.text !== q.text);
         localStorage.setItem('keisanNinjaFailedProblems', JSON.stringify(failed));
+    }
+
+    loadUnlockedScrolls() {
+        try {
+            const data = localStorage.getItem('keisanNinjaUnlockedScrolls');
+            return data ? JSON.parse(data) : [];
+        } catch (e) {
+            return [];
+        }
+    }
+
+    saveUnlockedScrolls() {
+        localStorage.setItem('keisanNinjaUnlockedScrolls', JSON.stringify(this.unlockedScrolls));
     }
 
     saveHighScore(operator, score) {
@@ -509,6 +532,21 @@ class Game {
         this.totalStars += earnedStars;
         localStorage.setItem('keisanNinjaTotalStars', this.totalStars.toString());
 
+        let newScrollUnlocked = null;
+        const currentRankIndex = this.storyScrollsList.findIndex(s => s.rank === rank.name);
+        if (currentRankIndex !== -1) {
+            for (let i = 0; i <= currentRankIndex; i++) {
+                const sData = this.storyScrollsList[i];
+                if (!this.unlockedScrolls.includes(sData.rank)) {
+                    this.unlockedScrolls.push(sData.rank);
+                    newScrollUnlocked = sData;
+                }
+            }
+            if (newScrollUnlocked) {
+                this.saveUnlockedScrolls();
+            }
+        }
+
         this.app.innerHTML = `
             <div class="screen result-screen${isBlankTheme ? ' blank-theme' : ''}">
                 <div class="rank-emoji">${rank.emoji}</div>
@@ -516,23 +554,90 @@ class Game {
                 <div class="score-label">スコア</div>
                 <div class="final-score">${this.score}<small>点</small></div>
                 ${isRecord ? '<div class="new-record">🎉 ハイスコア更新！</div>' : ''}
-                
+                ${newScrollUnlocked ? '<div class="new-scroll-notice" style="color:var(--gold); font-weight:bold; margin-top:10px;">📜 新しい巻物を手に入れた！</div>' : ''}
+
                 <div class="stars-info" style="margin: 20px 0; padding: 15px; background: var(--surface2); border-radius: 16px; border: 2px solid var(--gold); width: 100%; max-width: 320px; box-shadow: 0 4px 12px rgba(0,0,0,0.4);">
                     <div style="font-size: 1.2rem; font-weight: bold; color: var(--gold); margin-bottom: 8px;">🌟 今回ゲット: ${earnedStars}個</div>
                     <div style="font-size: 1.2rem; font-weight: bold; color: var(--gold); margin-bottom: 16px;">🌟 トータル: ${this.totalStars}個</div>
                     <button class="rbtn store-btn" style="background: var(--gold); color: #000; width: 100%;">🏪 スターストアへ</button>
                 </div>
 
-                <div class="result-btns">
-                    <button class="rbtn rbtn-retry">もう一度</button>
-                    <button class="rbtn rbtn-back">もどる</button>
+                <div class="result-btns" style="flex-direction:column; align-items:center;">
+                    <button class="rbtn rbtn-scrolls">📜 巻物を見る</button>
+                    <div style="display:flex; gap:12px; width:100%;">
+                        <button class="rbtn rbtn-retry">もう一度</button>
+                        <button class="rbtn rbtn-back">もどる</button>
+                    </div>
                 </div>
             </div>
         `;
 
         this.app.querySelector('.store-btn').addEventListener('click', () => this.renderStarStore());
+        this.app.querySelector('.rbtn-scrolls').addEventListener('click', () => this.showScrollsModal());
         this.app.querySelector('.rbtn-retry').addEventListener('click', () => this.startGame());
         this.app.querySelector('.rbtn-back').addEventListener('click', () => this.renderModeSelect());
+
+        if (newScrollUnlocked) {
+            setTimeout(() => this.showSingleScrollModal(newScrollUnlocked), 500);
+        }
+    }
+
+    showSingleScrollModal(scrollData) {
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-title">新しい巻物をアンロック！</div>
+                <div class="scroll-entry">
+                    <div class="scroll-title">${scrollData.emoji} ${scrollData.title}</div>
+                    <div class="scroll-text">${scrollData.text}</div>
+                </div>
+                <button class="rbtn rbtn-back modal-close-btn">とじる</button>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+
+        overlay.querySelector('.modal-close-btn').addEventListener('click', () => {
+            overlay.remove();
+        });
+    }
+
+    showScrollsModal() {
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        
+        let scrollsHtml = '';
+        this.storyScrollsList.forEach(s => {
+            if (this.unlockedScrolls.includes(s.rank)) {
+                scrollsHtml += `
+                    <div class="scroll-entry">
+                        <div class="scroll-title">${s.emoji} ${s.title}</div>
+                        <div class="scroll-text">${s.text}</div>
+                    </div>
+                `;
+            } else {
+                scrollsHtml += `
+                    <div class="scroll-locked">
+                        🔒 条件: 「${s.rank}」に到達する
+                    </div>
+                `;
+            }
+        });
+
+        overlay.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-title">忍者の巻物</div>
+                <div class="scrolls-container" style="max-height: 50vh; overflow-y: auto; margin-bottom: 12px; padding-right: 8px;">
+                    ${scrollsHtml}
+                </div>
+                <button class="rbtn rbtn-back modal-close-btn">とじる</button>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+
+        overlay.querySelector('.modal-close-btn').addEventListener('click', () => {
+            overlay.remove();
+        });
     }
 
     renderStarStore() {
