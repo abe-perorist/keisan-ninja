@@ -11,6 +11,8 @@ class Game {
         this.currentOperator = null;
         this.app = document.getElementById('app');
 
+        this.totalStars = parseInt(localStorage.getItem('keisanNinjaTotalStars'), 10) || 0;
+
         this.sounds = {
             correct: new Audio('sounds/correct.mp3'),
             incorrect: new Audio('sounds/incorrect.mp3'),
@@ -503,6 +505,10 @@ class Game {
 
         const isBlankTheme = ['intro-add-blank', 'intro-sub-blank'].includes(this.currentOperator);
 
+        const earnedStars = Math.floor(this.score / 10);
+        this.totalStars += earnedStars;
+        localStorage.setItem('keisanNinjaTotalStars', this.totalStars.toString());
+
         this.app.innerHTML = `
             <div class="screen result-screen${isBlankTheme ? ' blank-theme' : ''}">
                 <div class="rank-emoji">${rank.emoji}</div>
@@ -510,6 +516,13 @@ class Game {
                 <div class="score-label">スコア</div>
                 <div class="final-score">${this.score}<small>点</small></div>
                 ${isRecord ? '<div class="new-record">🎉 ハイスコア更新！</div>' : ''}
+                
+                <div class="stars-info" style="margin: 20px 0; padding: 15px; background: var(--surface2); border-radius: 16px; border: 2px solid var(--gold); width: 100%; max-width: 320px; box-shadow: 0 4px 12px rgba(0,0,0,0.4);">
+                    <div style="font-size: 1.2rem; font-weight: bold; color: var(--gold); margin-bottom: 8px;">🌟 今回ゲット: ${earnedStars}個</div>
+                    <div style="font-size: 1.2rem; font-weight: bold; color: var(--gold); margin-bottom: 16px;">🌟 トータル: ${this.totalStars}個</div>
+                    <button class="rbtn store-btn" style="background: var(--gold); color: #000; width: 100%;">🏪 スターストアへ</button>
+                </div>
+
                 <div class="result-btns">
                     <button class="rbtn rbtn-retry">もう一度</button>
                     <button class="rbtn rbtn-back">もどる</button>
@@ -517,7 +530,27 @@ class Game {
             </div>
         `;
 
+        this.app.querySelector('.store-btn').addEventListener('click', () => this.renderStarStore());
         this.app.querySelector('.rbtn-retry').addEventListener('click', () => this.startGame());
+        this.app.querySelector('.rbtn-back').addEventListener('click', () => this.renderModeSelect());
+    }
+
+    renderStarStore() {
+        this.app.innerHTML = `
+            <div class="screen store-screen" style="align-items: center; justify-content: center; text-align: center; padding: 20px;">
+                <div class="title-logo" style="font-size: 5rem; margin-bottom: 20px;">🏪</div>
+                <h1 class="game-title" style="color: var(--gold); margin-bottom: 10px;">🏪 スターストア</h1>
+                <p style="font-size: 1.5rem; margin: 20px 0; color: var(--text);">🌟 トータル星: <span style="color: var(--gold); font-weight: bold; font-size: 2rem;">${this.totalStars}</span> 個</p>
+                
+                <div style="font-size: 1.5rem; margin: 40px 0; padding: 30px; background: var(--surface2); border-radius: 16px; border: 2px dashed var(--muted); color: var(--muted);">
+                    近日公開予定...
+                </div>
+
+                <div class="result-btns" style="width: 100%; max-width: 320px;">
+                    <button class="rbtn rbtn-back" style="width: 100%;">もどる</button>
+                </div>
+            </div>
+        `;
         this.app.querySelector('.rbtn-back').addEventListener('click', () => this.renderModeSelect());
     }
 }
