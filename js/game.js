@@ -1,3 +1,14 @@
+import {
+    REWARD_ITEMS,
+    GACHA_PRICES,
+    getOwnedItemIds,
+    getEquippedItemId,
+    setEquippedItemId,
+    getItemById,
+    pullSingleGacha,
+    pullMultipleGacha,
+} from './rewards.js';
+
 class Game {
     constructor() {
         this.score = 0;
@@ -12,7 +23,9 @@ class Game {
         this.app = document.getElementById('app');
 
         this.totalStars = parseInt(localStorage.getItem('keisanNinjaTotalStars'), 10) || 0;
+        this.equippedItem = getItemById(getEquippedItemId());
 
+        this.audioCtx = null;
         this.sounds = {
             correct: new Audio('sounds/correct.mp3'),
             incorrect: new Audio('sounds/incorrect.mp3'),
@@ -131,6 +144,7 @@ class Game {
     }
 
     renderModeSelect() {
+        this.equippedItem = getItemById(getEquippedItemId());
         const modes = [
             { op: '+', label: '足し算', symbol: '＋', color: '#27ae60' },
             { op: '-', label: '引き算', symbol: '－', color: '#2980b9' },
@@ -141,10 +155,36 @@ class Game {
 
         this.app.innerHTML = `
             <div class="screen mode-select-screen">
+                <div class="home-hud">
+                    <div class="hud-equipped" id="hudEquippedBox" title="コレクション・そうび変更">
+                        <span class="hud-avatar">${this.equippedItem.emoji}</span>
+                        <div class="hud-name-box">
+                            <span class="hud-role">相棒忍者</span>
+                            <span class="hud-name">${this.equippedItem.name}</span>
+                        </div>
+                    </div>
+                    <div class="hud-stars" id="hudStarsBox">
+                        <span class="hud-star-icon">🌟</span>
+                        <span>${this.totalStars}</span>
+                    </div>
+                </div>
+
                 <div class="title-area">
-                    <div class="title-logo">🥷</div>
+                    <div class="title-logo">${this.equippedItem.emoji}</div>
                     <h1 class="game-title">計算忍者</h1>
                 </div>
+
+                <div class="home-nav-grid">
+                    <button class="home-nav-btn home-nav-gacha" id="homeBtnGacha">
+                        <span>🏪</span>
+                        <span>忍 ガチャ</span>
+                    </button>
+                    <button class="home-nav-btn home-nav-collection" id="homeBtnCollection">
+                        <span>📖</span>
+                        <span>忍者ずかん</span>
+                    </button>
+                </div>
+
                 <div class="intro-grid">
                     <button class="intro-mode-btn" data-op="intro-add">
                         <span class="intro-icon">🌸</span>
@@ -212,6 +252,11 @@ class Game {
             </div>
         `;
 
+        this.app.querySelector('#homeBtnGacha').addEventListener('click', () => this.renderGachaScreen());
+        this.app.querySelector('#homeBtnCollection').addEventListener('click', () => this.renderCollectionScreen());
+        this.app.querySelector('#hudEquippedBox').addEventListener('click', () => this.renderCollectionScreen());
+        this.app.querySelector('#hudStarsBox').addEventListener('click', () => this.renderGachaScreen());
+
         this.app.querySelectorAll('[data-op]').forEach(btn => {
             btn.addEventListener('click', () => {
                 this.currentOperator = btn.dataset.op;
@@ -247,21 +292,27 @@ class Game {
     }
 
     renderGameScreen() {
+        this.equippedItem = getItemById(getEquippedItemId());
         const maxQ = this.sessionMaxQ;
         const isBlankTheme = ['intro-add-blank', 'intro-sub-blank'].includes(this.currentOperator);
         this.app.innerHTML = `
             <div class="screen game-screen${isBlankTheme ? ' blank-theme' : ''}">
                 <div class="game-header">
-                    <div class="stat-box">
-                        <span class="stat-label">スコア</span>
-                        <span class="stat-value gold" id="scoreVal">0</span>
+                    <div class="stat-box" style="flex-direction: row; align-items: center; gap: 8px;">
+                        <span class="header-equipped-avatar" title="${this.equippedItem.name}">${this.equippedItem.emoji}</span>
+                        <div>
+                            <span class="stat-label">スコア</span>
+                            <span class="stat-value gold" id="scoreVal">0</span>
+                        </div>
                     </div>
                     <div class="stat-box center">
                         <span class="stat-label" id="qProgress">1 / ${maxQ}</span>
                     </div>
                     <div class="stat-box right">
-                        <span class="stat-label">残り</span>
-                        <span class="stat-value blue" id="timerVal">${this.totalTimeLeft}</span><span class="stat-unit">秒</span>
+                        <div>
+                            <span class="stat-label">残り</span>
+                            <span class="stat-value blue" id="timerVal">${this.totalTimeLeft}</span><span class="stat-unit">秒</span>
+                        </div>
                     </div>
                 </div>
                 <div class="q-timer-wrap">
@@ -547,8 +598,13 @@ class Game {
             }
         }
 
+        this.equippedItem = getItemById(getEquippedItemId());
         this.app.innerHTML = `
             <div class="screen result-screen${isBlankTheme ? ' blank-theme' : ''}">
+                <div style="display: flex; align-items: center; gap: 8px; background: var(--surface2); padding: 6px 14px; border-radius: 999px; margin-bottom: 4px;">
+                    <span style="font-size: 1.3rem;">${this.equippedItem.emoji}</span>
+                    <span style="font-size: 0.85rem; font-weight: bold; color: var(--muted);">相棒: ${this.equippedItem.name}</span>
+                </div>
                 <div class="rank-emoji">${rank.emoji}</div>
                 <div class="rank-name" style="color:${rank.color}">${rank.name}</div>
                 <div class="score-label">スコア</div>
@@ -556,10 +612,13 @@ class Game {
                 ${isRecord ? '<div class="new-record">🎉 ハイスコア更新！</div>' : ''}
                 ${newScrollUnlocked ? '<div class="new-scroll-notice" style="color:var(--gold); font-weight:bold; margin-top:10px;">📜 新しい巻物を手に入れた！</div>' : ''}
 
-                <div class="stars-info" style="margin: 20px 0; padding: 15px; background: var(--surface2); border-radius: 16px; border: 2px solid var(--gold); width: 100%; max-width: 320px; box-shadow: 0 4px 12px rgba(0,0,0,0.4);">
-                    <div style="font-size: 1.2rem; font-weight: bold; color: var(--gold); margin-bottom: 8px;">🌟 今回ゲット: ${earnedStars}個</div>
-                    <div style="font-size: 1.2rem; font-weight: bold; color: var(--gold); margin-bottom: 16px;">🌟 トータル: ${this.totalStars}個</div>
-                    <button class="rbtn store-btn" style="background: var(--gold); color: #000; width: 100%;">🏪 スターストアへ</button>
+                <div class="stars-info" style="margin: 16px 0; padding: 14px; background: var(--surface2); border-radius: 16px; border: 2px solid var(--gold); width: 100%; max-width: 320px; box-shadow: 0 4px 12px rgba(0,0,0,0.4);">
+                    <div style="font-size: 1.15rem; font-weight: bold; color: var(--gold); margin-bottom: 6px;">🌟 今回ゲット: ${earnedStars}個</div>
+                    <div style="font-size: 1.15rem; font-weight: bold; color: var(--gold); margin-bottom: 12px;">🌟 トータル: ${this.totalStars}個</div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="rbtn store-btn" style="background: var(--gold); color: #000; font-size: 0.95rem; padding: 12px;">🏪 ガチャへ</button>
+                        <button class="rbtn result-collection-btn" style="background: linear-gradient(135deg, #8e44ad, #9b59b6); color: #fff; font-size: 0.95rem; padding: 12px;">📖 ずかん</button>
+                    </div>
                 </div>
 
                 <div class="result-btns" style="flex-direction:column; align-items:center;">
@@ -572,7 +631,8 @@ class Game {
             </div>
         `;
 
-        this.app.querySelector('.store-btn').addEventListener('click', () => this.renderStarStore());
+        this.app.querySelector('.store-btn').addEventListener('click', () => this.renderGachaScreen());
+        this.app.querySelector('.result-collection-btn').addEventListener('click', () => this.renderCollectionScreen());
         this.app.querySelector('.rbtn-scrolls').addEventListener('click', () => this.showScrollsModal());
         this.app.querySelector('.rbtn-retry').addEventListener('click', () => this.startGame());
         this.app.querySelector('.rbtn-back').addEventListener('click', () => this.renderModeSelect());
@@ -640,23 +700,361 @@ class Game {
         });
     }
 
+    playTone(frequency, type = 'sine', duration = 0.15, gainVal = 0.2) {
+        try {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (!this.audioCtx) this.audioCtx = new AudioCtx();
+            if (this.audioCtx.state === 'suspended') {
+                this.audioCtx.resume();
+            }
+            const osc = this.audioCtx.createOscillator();
+            const gain = this.audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(frequency, this.audioCtx.currentTime);
+            gain.gain.setValueAtTime(gainVal, this.audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, this.audioCtx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(this.audioCtx.destination);
+            osc.start();
+            osc.stop(this.audioCtx.currentTime + duration);
+        } catch {
+            // Audio context not allowed or supported
+        }
+    }
+
+    playCrankSound() {
+        this.playTone(320, 'triangle', 0.1, 0.25);
+        setTimeout(() => this.playTone(480, 'triangle', 0.12, 0.2), 120);
+    }
+
+    playCapsuleOpenSound(maxRarity = 1) {
+        if (maxRarity === 3) {
+            // Super rare fanfare
+            const notes = [523.25, 659.25, 783.99, 1046.5];
+            notes.forEach((freq, idx) => {
+                setTimeout(() => this.playTone(freq, 'triangle', 0.25, 0.3), idx * 100);
+            });
+        } else if (maxRarity === 2) {
+            // Rare chime
+            const notes = [440, 554.37, 659.25];
+            notes.forEach((freq, idx) => {
+                setTimeout(() => this.playTone(freq, 'sine', 0.2, 0.25), idx * 90);
+            });
+        } else {
+            // Pop sound
+            this.playTone(400, 'sine', 0.08, 0.2);
+            setTimeout(() => this.playTone(600, 'sine', 0.12, 0.2), 70);
+        }
+    }
+
     renderStarStore() {
+        this.renderGachaScreen();
+    }
+
+    renderGachaScreen() {
         this.app.innerHTML = `
-            <div class="screen store-screen" style="align-items: center; justify-content: center; text-align: center; padding: 20px;">
-                <div class="title-logo" style="font-size: 5rem; margin-bottom: 20px;">🏪</div>
-                <h1 class="game-title" style="color: var(--gold); margin-bottom: 10px;">🏪 スターストア</h1>
-                <p style="font-size: 1.5rem; margin: 20px 0; color: var(--text);">🌟 トータル星: <span style="color: var(--gold); font-weight: bold; font-size: 2rem;">${this.totalStars}</span> 個</p>
-                
-                <div style="font-size: 1.5rem; margin: 40px 0; padding: 30px; background: var(--surface2); border-radius: 16px; border: 2px dashed var(--muted); color: var(--muted);">
-                    近日公開予定...
+            <div class="screen gacha-screen">
+                <div class="gacha-header">
+                    <button class="rbtn rbtn-back back-to-mode" style="padding: 10px 18px; font-size: 0.95rem; flex: none;">◀ もどる</button>
+                    <div class="hud-stars">
+                        <span class="hud-star-icon">🌟</span>
+                        <span id="gachaStarCount">${this.totalStars}</span>
+                    </div>
                 </div>
 
-                <div class="result-btns" style="width: 100%; max-width: 320px;">
-                    <button class="rbtn rbtn-back" style="width: 100%;">もどる</button>
+                <div class="title-area" style="margin-bottom: 0;">
+                    <h1 class="game-title" style="font-size: 2.2rem; color: var(--gold); text-shadow: 0 0 20px rgba(243,156,18,0.5);">忍 ガチャ</h1>
+                    <p style="font-size: 0.85rem; color: var(--muted); margin-top: 2px;">あつめた星で新しい忍者アバターを手に入れよう！</p>
+                </div>
+
+                <div class="gacha-machine-wrap">
+                    <div class="gacha-globe">
+                        <div class="capsule-group">
+                            <span class="capsule-item" style="top: 25px; left: 40px;">🔴</span>
+                            <span class="capsule-item" style="top: 50px; right: 35px;">🟡</span>
+                            <span class="capsule-item" style="top: 85px; left: 65px;">🔵</span>
+                            <span class="capsule-item" style="bottom: 30px; left: 35px;">🟣</span>
+                            <span class="capsule-item" style="bottom: 25px; right: 40px;">🟢</span>
+                        </div>
+                    </div>
+                    <div class="gacha-crank-box">
+                        <div class="gacha-crank" id="gachaCrank">⚙️</div>
+                        <span style="font-size: 0.75rem; color: var(--muted); font-weight: bold;">ハンドルを回そう！</span>
+                    </div>
+                    <div class="gacha-chute" id="gachaChute">
+                        <span id="chuteCapsule" style="display: none;">🎁</span>
+                    </div>
+                </div>
+
+                <div class="gacha-action-area">
+                    <button class="gacha-btn gacha-btn-single" id="btnPullSingle" ${this.totalStars < GACHA_PRICES.SINGLE ? 'disabled' : ''}>
+                        <span>🎯 1回まわす</span>
+                        <span>🌟 ${GACHA_PRICES.SINGLE}個</span>
+                    </button>
+                    <button class="gacha-btn gacha-btn-ten" id="btnPullTen" ${this.totalStars < GACHA_PRICES.TEN ? 'disabled' : ''}>
+                        <span>🔥 10連ガチャ (10%OFF)</span>
+                        <span>🌟 ${GACHA_PRICES.TEN}個</span>
+                    </button>
+                    <button class="rbtn home-nav-collection" id="btnGoCollection" style="width: 100%; padding: 14px; font-size: 1rem;">
+                        📖 忍者コレクションを見る
+                    </button>
+                </div>
+
+                <div class="gacha-rates-badge">
+                    【排出率】 ⭐ ノーマル 60% ｜ ⭐⭐ レア 30% ｜ ⭐⭐⭐ 超激レア 10%<br>
+                    ※すでにもっている忍者がでると、星がボーナスでお返しされます！
                 </div>
             </div>
         `;
-        this.app.querySelector('.rbtn-back').addEventListener('click', () => this.renderModeSelect());
+
+        this.app.querySelector('.back-to-mode').addEventListener('click', () => this.renderModeSelect());
+        this.app.querySelector('#btnGoCollection').addEventListener('click', () => this.renderCollectionScreen());
+        this.app.querySelector('#gachaCrank').addEventListener('click', () => {
+            if (this.totalStars >= GACHA_PRICES.SINGLE) {
+                this.handleGachaPull(1);
+            }
+        });
+
+        const btnSingle = this.app.querySelector('#btnPullSingle');
+        if (btnSingle) {
+            btnSingle.addEventListener('click', () => this.handleGachaPull(1));
+        }
+
+        const btnTen = this.app.querySelector('#btnPullTen');
+        if (btnTen) {
+            btnTen.addEventListener('click', () => this.handleGachaPull(10));
+        }
+    }
+
+    handleGachaPull(count) {
+        const cost = count === 10 ? GACHA_PRICES.TEN : GACHA_PRICES.SINGLE * count;
+        if (this.totalStars < cost) return;
+
+        // Deduct stars
+        this.totalStars -= cost;
+        localStorage.setItem('keisanNinjaTotalStars', this.totalStars.toString());
+
+        // Animate crank
+        const crank = document.getElementById('gachaCrank');
+        const chuteCapsule = document.getElementById('chuteCapsule');
+        if (crank) crank.classList.add('spinning');
+        this.playCrankSound();
+
+        // Disable buttons during pull
+        const btns = this.app.querySelectorAll('.gacha-btn');
+        btns.forEach(b => (b.disabled = true));
+
+        setTimeout(() => {
+            if (crank) crank.classList.remove('spinning');
+            if (chuteCapsule) {
+                chuteCapsule.style.display = 'inline-block';
+                chuteCapsule.className = 'chute-capsule';
+            }
+            this.playTone(520, 'sine', 0.15, 0.25);
+
+            setTimeout(() => {
+                let outcome;
+                if (count === 1) {
+                    const single = pullSingleGacha();
+                    outcome = { results: [single], totalRefund: single.refundStars };
+                } else {
+                    outcome = pullMultipleGacha(count);
+                }
+
+                // If refund stars occurred, add them back
+                if (outcome.totalRefund > 0) {
+                    this.totalStars += outcome.totalRefund;
+                    localStorage.setItem('keisanNinjaTotalStars', this.totalStars.toString());
+                }
+
+                this.showGachaRevealModal(outcome);
+            }, 600);
+        }, 800);
+    }
+
+    showGachaRevealModal(outcome) {
+        const { results, totalRefund } = outcome;
+        const maxRarity = Math.max(...results.map(r => r.item.rarity));
+        this.playCapsuleOpenSound(maxRarity);
+
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+
+        let contentHtml = '';
+        if (results.length === 1) {
+            const res = results[0];
+            const starEmojis = '⭐'.repeat(res.item.rarity);
+            contentHtml = `
+                <div class="single-reveal-wrap">
+                    <div class="reveal-card rarity-${res.item.rarity}" style="width: 100%; max-width: 260px; padding: 24px 16px;">
+                        ${res.isNew ? '<span class="reveal-badge-new">NEW!</span>' : ''}
+                        ${res.refundStars > 0 ? `<span class="reveal-badge-refund">重複 +${res.refundStars}🌟</span>` : ''}
+                        <div class="reveal-emoji">${res.item.emoji}</div>
+                        <div class="reveal-stars">${starEmojis} [${res.item.rarityLabel}]</div>
+                        <div class="reveal-item-name" style="font-size: 1.3rem;">${res.item.name}</div>
+                        <div class="reveal-tagline">${res.item.tagline}</div>
+                    </div>
+                </div>
+            `;
+        } else {
+            contentHtml = `
+                <div class="reveal-grid">
+                    ${results.map(res => `
+                        <div class="reveal-card rarity-${res.item.rarity}">
+                            ${res.isNew ? '<span class="reveal-badge-new">NEW!</span>' : ''}
+                            ${res.refundStars > 0 ? `<span class="reveal-badge-refund">+${res.refundStars}🌟</span>` : ''}
+                            <div class="reveal-emoji" style="font-size: 2.2rem;">${res.item.emoji}</div>
+                            <div class="reveal-stars" style="font-size: 0.75rem;">${'⭐'.repeat(res.item.rarity)}</div>
+                            <div class="reveal-item-name" style="font-size: 0.8rem;">${res.item.name}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        const refundNotice = totalRefund > 0 ? `
+            <div style="font-size: 0.95rem; color: var(--gold); font-weight: bold; margin-bottom: 12px; background: rgba(243,156,18,0.15); padding: 8px 14px; border-radius: 12px; border: 1px solid var(--gold);">
+                ✨ ダブりボーナス！ 合計 <b>+${totalRefund}個</b> の星をお返ししました！
+            </div>
+        ` : '';
+
+        overlay.innerHTML = `
+            <div class="modal-content reveal-modal">
+                <div class="modal-title">🎉 ガチャ結果発表！</div>
+                ${contentHtml}
+                ${refundNotice}
+                <div style="display: flex; flex-direction: column; gap: 10px; width: 100%;">
+                    <button class="rbtn rbtn-retry modal-pull-again" style="background: var(--gold); color: #000; width: 100%;">もう一度まわす</button>
+                    <button class="rbtn home-nav-collection modal-go-collection" style="width: 100%;">ずかんで確認・そうび</button>
+                    <button class="rbtn rbtn-back modal-close-btn" style="width: 100%;">とじる</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        overlay.querySelector('.modal-close-btn').addEventListener('click', () => {
+            overlay.remove();
+            this.renderGachaScreen();
+        });
+
+        overlay.querySelector('.modal-pull-again').addEventListener('click', () => {
+            overlay.remove();
+            this.renderGachaScreen();
+            if (this.totalStars >= GACHA_PRICES.SINGLE) {
+                this.handleGachaPull(1);
+            }
+        });
+
+        overlay.querySelector('.modal-go-collection').addEventListener('click', () => {
+            overlay.remove();
+            this.renderCollectionScreen();
+        });
+    }
+
+    renderCollectionScreen() {
+        const ownedIds = getOwnedItemIds();
+        const equippedId = getEquippedItemId();
+        const totalItemsCount = REWARD_ITEMS.length;
+        const ownedCount = ownedIds.length;
+        const percent = Math.round((ownedCount / totalItemsCount) * 100);
+
+        this.app.innerHTML = `
+            <div class="screen collection-screen">
+                <div class="gacha-header">
+                    <button class="rbtn rbtn-back back-to-mode" style="padding: 10px 18px; font-size: 0.95rem; flex: none;">◀ もどる</button>
+                    <button class="rbtn home-nav-gacha btn-go-gacha" style="padding: 10px 18px; font-size: 0.95rem; flex: none;">🏪 ガチャへ</button>
+                </div>
+
+                <div class="title-area" style="margin-bottom: 0;">
+                    <h1 class="game-title" style="font-size: 2rem; color: #a29bfe; text-shadow: 0 0 20px rgba(162,155,254,0.5);">📖 忍者ずかん</h1>
+                    <p style="font-size: 0.85rem; color: var(--muted); margin-top: 2px;">あつめた忍者をタップして、相棒に設定（そうび）しよう！</p>
+                </div>
+
+                <div class="collection-stats-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-weight: bold;">
+                        <span style="font-size: 0.95rem; color: var(--text);">コンプリート率</span>
+                        <span style="font-size: 1.1rem; color: var(--gold);">${ownedCount} / ${totalItemsCount} (${percent}%)</span>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill" style="width: ${percent}%;"></div>
+                    </div>
+                </div>
+
+                <div class="collection-grid">
+                    ${REWARD_ITEMS.map(item => {
+                        const isOwned = ownedIds.includes(item.id);
+                        const isEquipped = item.id === equippedId;
+                        return `
+                            <div class="item-card ${isEquipped ? 'equipped' : ''} ${!isOwned ? 'locked' : ''}" data-item-id="${item.id}">
+                                ${isEquipped ? '<span class="item-card-equipped-badge">そうび中</span>' : ''}
+                                <div class="item-card-emoji">${isOwned ? item.emoji : '❓'}</div>
+                                <div class="item-card-name">${isOwned ? item.name : '？？？'}</div>
+                                <div class="item-card-stars">${'⭐'.repeat(item.rarity)}</div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+        `;
+
+        this.app.querySelector('.back-to-mode').addEventListener('click', () => this.renderModeSelect());
+        this.app.querySelector('.btn-go-gacha').addEventListener('click', () => this.renderGachaScreen());
+
+        this.app.querySelectorAll('.item-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const itemId = card.dataset.itemId;
+                const isOwned = ownedIds.includes(itemId);
+                if (isOwned) {
+                    this.showItemDetailModal(itemId);
+                }
+            });
+        });
+    }
+
+    showItemDetailModal(itemId) {
+        const item = getItemById(itemId);
+        const equippedId = getEquippedItemId();
+        const isEquipped = item.id === equippedId;
+
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+
+        const starEmojis = '⭐'.repeat(item.rarity);
+
+        overlay.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-title">忍者しょうさい</div>
+                <div class="detail-modal-card">
+                    <div class="detail-emoji">${item.emoji}</div>
+                    <div class="detail-rarity">${starEmojis} [${item.rarityLabel}]</div>
+                    <div class="detail-title">${item.name}</div>
+                    <div class="detail-desc">${item.tagline}</div>
+                    <button class="detail-equip-btn ${isEquipped ? 'is-active' : 'not-active'}" id="btnEquipAction">
+                        ${isEquipped ? '✅ そうび中' : '🥷 この忍者をそうびする'}
+                    </button>
+                </div>
+                <button class="rbtn rbtn-back modal-close-btn" style="width: 100%;">とじる</button>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        const btnEquip = overlay.querySelector('#btnEquipAction');
+        btnEquip.addEventListener('click', () => {
+            if (!isEquipped) {
+                setEquippedItemId(item.id);
+                this.equippedItem = item;
+                this.playTone(660, 'triangle', 0.2, 0.25);
+                setTimeout(() => this.playTone(880, 'sine', 0.2, 0.25), 100);
+            }
+            overlay.remove();
+            this.renderCollectionScreen();
+        });
+
+        overlay.querySelector('.modal-close-btn').addEventListener('click', () => {
+            overlay.remove();
+        });
     }
 }
 
