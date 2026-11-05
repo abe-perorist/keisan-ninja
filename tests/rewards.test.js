@@ -49,20 +49,26 @@ saveOwnedItemIds(['trainee_ninja', 'flame_ninja']);
 let hasNew = false;
 let hasDuplicate = false;
 
-for (let i = 0; i < 200; i++) {
+const raritiesSeen = new Set();
+for (let i = 0; i < 1000; i++) {
     const res = pullSingleGacha();
     assert.ok(res.item, 'Pulled item must exist');
-    assert.ok([1, 2, 3].includes(res.item.rarity), 'Rarity must be 1, 2, or 3');
+    assert.ok([1, 2, 3, 4, 5].includes(res.item.rarity), 'Rarity must be 1, 2, 3, 4, or 5');
+    raritiesSeen.add(res.item.rarity);
     if (res.isNew) {
         hasNew = true;
         assert.strictEqual(res.refundStars, 0, 'New item should have 0 refund');
     } else {
         hasDuplicate = true;
-        assert.strictEqual(res.refundStars, DUPLICATE_REFUNDS[res.item.rarity], 'Duplicate refund must match table');
+        assert.strictEqual(res.refundStars, DUPLICATE_REFUNDS[res.item.rarity], `Duplicate refund for ${res.item.rarity}★ must match table`);
     }
 }
-assert.ok(hasNew, 'Should draw new items over 200 pulls');
-assert.ok(hasDuplicate, 'Should draw duplicate items over 200 pulls');
+assert.ok(hasNew, 'Should draw new items over 1000 pulls');
+assert.ok(hasDuplicate, 'Should draw duplicate items over 1000 pulls');
+assert.ok(raritiesSeen.has(1), 'Must see 1-star');
+assert.ok(raritiesSeen.has(2), 'Must see 2-star');
+assert.ok(raritiesSeen.has(3), 'Must see 3-star');
+assert.ok(raritiesSeen.has(4), 'Must see 4-star');
 
 // 5. Multiple pull (10x pull)
 const multi = pullMultipleGacha(10);

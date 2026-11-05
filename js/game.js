@@ -728,7 +728,19 @@ class Game {
     }
 
     playCapsuleOpenSound(maxRarity = 1) {
-        if (maxRarity === 3) {
+        if (maxRarity === 5) {
+            // Godly cosmic fanfare
+            const notes = [523.25, 659.25, 783.99, 1046.5, 1318.5, 1567.98];
+            notes.forEach((freq, idx) => {
+                setTimeout(() => this.playTone(freq, 'square', 0.35, 0.35), idx * 90);
+            });
+        } else if (maxRarity === 4) {
+            // Legend fanfare
+            const notes = [440, 554.37, 659.25, 880, 1108.73];
+            notes.forEach((freq, idx) => {
+                setTimeout(() => this.playTone(freq, 'triangle', 0.3, 0.3), idx * 100);
+            });
+        } else if (maxRarity === 3) {
             // Super rare fanfare
             const notes = [523.25, 659.25, 783.99, 1046.5];
             notes.forEach((freq, idx) => {
@@ -801,7 +813,8 @@ class Game {
                 </div>
 
                 <div class="gacha-rates-badge">
-                    【排出率】 ⭐ ノーマル 60% ｜ ⭐⭐ レア 30% ｜ ⭐⭐⭐ 超激レア 10%<br>
+                    【排出率】 ⭐ ノーマル 50% ｜ ⭐⭐ レア 30% ｜ ⭐⭐⭐ 激レア 14%<br>
+                    🌟⭐⭐⭐⭐ 超絶レジェンド 5% ｜ 👑⭐⭐⭐⭐⭐ 神話ゴッド 1%<br>
                     ※すでにもっている忍者がでると、星がボーナスでお返しされます！
                 </div>
             </div>
@@ -986,11 +999,11 @@ class Game {
                         const isOwned = ownedIds.includes(item.id);
                         const isEquipped = item.id === equippedId;
                         return `
-                            <div class="item-card ${isEquipped ? 'equipped' : ''} ${!isOwned ? 'locked' : ''}" data-item-id="${item.id}">
+                            <div class="item-card rarity-${item.rarity}-card ${isEquipped ? 'equipped' : ''} ${!isOwned ? 'locked' : ''}" data-item-id="${item.id}">
                                 ${isEquipped ? '<span class="item-card-equipped-badge">そうび中</span>' : ''}
                                 <div class="item-card-emoji">${isOwned ? item.emoji : '❓'}</div>
                                 <div class="item-card-name">${isOwned ? item.name : '？？？'}</div>
-                                <div class="item-card-stars">${'⭐'.repeat(item.rarity)}</div>
+                                <div class="item-card-stars" style="${item.rarity >= 4 ? 'color: #ff9ff3;' : ''}">${'⭐'.repeat(item.rarity)}</div>
                             </div>
                         `;
                     }).join('')}
