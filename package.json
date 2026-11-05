@@ -4,6 +4,7 @@
   "description": "計算忍者 - ブラウザゲーム",
   "type": "module",
   "scripts": {
+    "test": "node tests/rewards.test.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },

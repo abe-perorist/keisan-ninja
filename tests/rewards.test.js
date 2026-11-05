@@ -1,0 +1,79 @@
+import assert from 'node:assert';
+import {
+    DUPLICATE_REFUNDS,
+    getOwnedItemIds,
+    saveOwnedItemIds,
+    getEquippedItemId,
+    setEquippedItemId,
+    getItemById,
+    pullSingleGacha,
+    pullMultipleGacha,
+} from '../js/rewards.js';
+
+// Polyfill minimal localStorage for testing
+const mockStorage = {};
+globalThis.localStorage = {
+    getItem: (key) => mockStorage[key] || null,
+    setItem: (key, val) => { mockStorage[key] = String(val); },
+    removeItem: (key) => { delete mockStorage[key]; },
+    clear: () => { Object.keys(mockStorage).forEach(k => delete mockStorage[k]); },
+};
+
+console.log('--- Testing rewards.js ---');
+
+// 1. Initial State
+mockStorage.keisanNinjaOwnedItems = undefined;
+mockStorage.keisanNinjaEquippedItem = undefined;
+const initialOwned = getOwnedItemIds();
+assert.deepStrictEqual(initialOwned, ['trainee_ninja'], 'Initial owned items should be trainee_ninja');
+
+const initialEquipped = getEquippedItemId();
+assert.strictEqual(initialEquipped, 'trainee_ninja', 'Initial equipped item should be trainee_ninja');
+
+// 2. Equip functionality
+const setOk = setEquippedItemId('flame_ninja');
+assert.strictEqual(setOk, false, 'Should not allow equipping unowned item');
+
+saveOwnedItemIds(['trainee_ninja', 'flame_ninja']);
+const setOk2 = setEquippedItemId('flame_ninja');
+assert.strictEqual(setOk2, true, 'Should allow equipping owned item');
+assert.strictEqual(getEquippedItemId(), 'flame_ninja');
+
+// 3. Item retrieval
+const item = getItemById('flame_ninja');
+assert.strictEqual(item.name, '火遁の熱血忍者');
+assert.strictEqual(item.rarity, 2);
+
+// 4. Single Pull & Duplicate refund
+saveOwnedItemIds(['trainee_ninja', 'flame_ninja']);
+let hasNew = false;
+let hasDuplicate = false;
+
+const raritiesSeen = new Set();
+for (let i = 0; i < 1000; i++) {
+    const res = pullSingleGacha();
+    assert.ok(res.item, 'Pulled item must exist');
+    assert.ok([1, 2, 3, 4, 5].includes(res.item.rarity), 'Rarity must be 1, 2, 3, 4, or 5');
+    raritiesSeen.add(res.item.rarity);
+    if (res.isNew) {
+        hasNew = true;
+        assert.strictEqual(res.refundStars, 0, 'New item should have 0 refund');
+    } else {
+        hasDuplicate = true;
+        assert.strictEqual(res.refundStars, DUPLICATE_REFUNDS[res.item.rarity], `Duplicate refund for ${res.item.rarity}★ must match table`);
+    }
+}
+assert.ok(hasNew, 'Should draw new items over 1000 pulls');
+assert.ok(hasDuplicate, 'Should draw duplicate items over 1000 pulls');
+assert.ok(raritiesSeen.has(1), 'Must see 1-star');
+assert.ok(raritiesSeen.has(2), 'Must see 2-star');
+assert.ok(raritiesSeen.has(3), 'Must see 3-star');
+assert.ok(raritiesSeen.has(4), 'Must see 4-star');
+
+// 5. Multiple pull (10x pull)
+const multi = pullMultipleGacha(10);
+assert.strictEqual(multi.results.length, 10, 'Must return 10 results');
+const expectedRefund = multi.results.reduce((acc, r) => acc + r.refundStars, 0);
+assert.strictEqual(multi.totalRefund, expectedRefund, 'Total refund must match sum of individual refunds');
+
+console.log('All reward logic tests passed! ✅');
