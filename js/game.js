@@ -9,9 +9,30 @@ import {
     pullMultipleGacha,
 } from './rewards.js';
 
-class Game {
+// モードごとの星の倍率。むずかしい修行ほど多くもらえるようにして、
+// 「かんたんなモードを連打したほうが得」という状態を解消する。
+const STAR_MULTIPLIERS = {
+    'intro-add': 1, 'intro-sub': 1, 'intro-add-blank': 1, 'intro-sub-blank': 1,
+    '+': 1.2, '-': 1.2, '×': 1.2, '÷': 1.2,
+    special: 1.5,
+    hyper: 2, master: 2,
+};
+
+const MODE_LABELS = {
+    'intro-add': 'にゅうもん たしざん',
+    'intro-sub': 'にゅうもん ひきざん',
+    'intro-add-blank': 'たしざん（虫食い）',
+    'intro-sub-blank': 'ひきざん（虫食い）',
+    '+': '足し算', '-': '引き算', '×': '掛け算', '÷': '割り算',
+    special: '特訓', hyper: 'ハイパー', master: 'マスター',
+};
+
+const DAILY_BONUS_STARS = 20;
+
+export class Game {
     constructor() {
         this.score = 0;
+        this.correctCount = 0;
         this.questionCount = 0;
         this.timeLimit = 5;
         this.totalTimeLimit = 60;
@@ -60,6 +81,8 @@ class Game {
             master: this.loadHighScore('master'),
         };
 
+        this.dailyMission = this.loadOrCreateDailyMission();
+
         this.renderModeSelect();
     }
 
@@ -103,6 +126,52 @@ class Game {
         localStorage.setItem('keisanNinjaUnlockedScrolls', JSON.stringify(this.unlockedScrolls));
     }
 
+    // ===== きょうの任務（デイリーミッション） =====
+
+    todayKey() {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    // 候補は「一度でもプレイしたことがあるモード」に限る。
+    // 入門しかやっていない子にマスターの任務が出ると達成不可能になるため。
+    pickMissionOp(dateKey) {
+        const played = Object.keys(this.highScores).filter(op => this.highScores[op] > 0);
+        const introOps = ['intro-add', 'intro-sub', 'intro-add-blank', 'intro-sub-blank'];
+        const harder = played.filter(op => !introOps.includes(op));
+        const pool = harder.length > 0 ? harder : (played.length > 0 ? played : ['intro-add']);
+
+        // 日付をシードにして、その日は何度開いても同じ任務になるようにする
+        let seed = 0;
+        for (const ch of dateKey) seed = (seed * 31 + ch.charCodeAt(0)) % 100000;
+        return pool[seed % pool.length];
+    }
+
+    // 目標はその子のハイスコアの6割。きょうだいで実力差があっても
+    // それぞれ「あと少しで届く」ラインになる。
+    missionTarget(op) {
+        const bestCorrect = Math.floor((this.highScores[op] || 0) / 10);
+        return Math.max(3, Math.round(bestCorrect * 0.6));
+    }
+
+    loadOrCreateDailyMission() {
+        const today = this.todayKey();
+        try {
+            const saved = JSON.parse(localStorage.getItem('keisanNinjaDailyMission'));
+            if (saved && saved.date === today) return saved;
+        } catch {
+            // 壊れていたら作り直す
+        }
+        const op = this.pickMissionOp(today);
+        const mission = { date: today, op, target: this.missionTarget(op), done: false };
+        localStorage.setItem('keisanNinjaDailyMission', JSON.stringify(mission));
+        return mission;
+    }
+
+    saveDailyMission() {
+        localStorage.setItem('keisanNinjaDailyMission', JSON.stringify(this.dailyMission));
+    }
+
     saveHighScore(operator, score) {
         const keys = { 'intro-add': 'intro-add', 'intro-sub': 'intro-sub', 'intro-add-blank': 'intro-add-blank', 'intro-sub-blank': 'intro-sub-blank', '+': 'addition', '-': 'subtraction', '×': 'multiplication', '÷': 'division', special: 'special', hyper: 'hyper', master: 'master' };
         localStorage.setItem(`keisanNinjaHighScore_${keys[operator]}`, score.toString());
@@ -144,6 +213,10 @@ class Game {
     }
 
     renderModeSelect() {
+        // 日付をまたいでアプリを開きっぱなしでも任務が切り替わるようにする
+        if (!this.dailyMission || this.dailyMission.date !== this.todayKey()) {
+            this.dailyMission = this.loadOrCreateDailyMission();
+        }
         this.equippedItem = getItemById(getEquippedItemId());
         const modes = [
             { op: '+', label: '足し算', symbol: '＋', color: '#27ae60' },
@@ -151,7 +224,12 @@ class Game {
             { op: '×', label: '掛け算', symbol: '✕', color: '#e67e22' },
             { op: '÷', label: '割り算', symbol: '÷', color: '#8e44ad' },
         ];
-        const hsLabels = { 'intro-add': 'にゅうもん＋', 'intro-sub': 'にゅうもん－', 'intro-add-blank': 'にゅうもん＋？', 'intro-sub-blank': 'にゅうもん－？', '+': '足し算', '-': '引き算', '×': '掛け算', '÷': '割り算', special: '特訓', hyper: 'ハイパー', master: 'マスター' };
+        const starBadge = op => {
+            const m = STAR_MULTIPLIERS[op] || 1;
+            return m > 1 ? `<span class="star-mult">🌟×${m}</span>` : '';
+        };
+        const mission = this.dailyMission;
+        const missionLabel = mission ? MODE_LABELS[mission.op] : '';
 
         this.app.innerHTML = `
             <div class="screen mode-select-screen">
@@ -184,6 +262,16 @@ class Game {
                         <span>忍者ずかん</span>
                     </button>
                 </div>
+
+                ${mission ? `
+                    <div class="daily-mission ${mission.done ? 'done' : ''}">
+                        <div class="dm-head">🎯 きょうの任務</div>
+                        ${mission.done
+                            ? `<div class="dm-body">たっせい！ またあした来るのじゃ 🎉</div>`
+                            : `<div class="dm-body"><b>${missionLabel}</b> で <b>${mission.target}問</b> せいかい</div>
+                               <div class="dm-reward">クリアで ＋${DAILY_BONUS_STARS}🌟</div>`}
+                    </div>
+                ` : ''}
 
                 <div class="intro-grid">
                     <button class="intro-mode-btn" data-op="intro-add">
@@ -218,13 +306,15 @@ class Game {
                 <div class="mode-grid">
                     ${modes.map(m => `
                         <button class="mode-btn" data-op="${m.op}" style="--c:${m.color}">
+                            ${starBadge(m.op)}
                             <span class="mode-symbol">${m.symbol}</span>
                             <span class="mode-label">${m.label}</span>
                         </button>
                     `).join('')}
                 </div>
-                <button class="special-mode-btn" data-op="special">✨ 特訓</button>
+                <button class="special-mode-btn" data-op="special">✨ 特訓 ${starBadge('special')}</button>
                 <button class="hyper-mode-btn" data-op="hyper">
+                    ${starBadge('hyper')}
                     <span class="hyper-icon">⚡</span>
                     <span class="hyper-text">
                         <span class="hyper-label">ハイパー</span>
@@ -232,6 +322,7 @@ class Game {
                     </span>
                 </button>
                 <button class="master-mode-btn" data-op="master">
+                    ${starBadge('master')}
                     <span class="master-icon">👑</span>
                     <span class="master-text">
                         <span class="master-label">マスター</span>
@@ -243,7 +334,7 @@ class Game {
                     <div class="hs-grid">
                         ${Object.entries(this.highScores).map(([op, s]) => `
                             <div class="hs-cell">
-                                <span class="hs-name">${hsLabels[op]}</span>
+                                <span class="hs-name">${MODE_LABELS[op]}</span>
                                 <span class="hs-val">${s}<small>点</small></span>
                             </div>
                         `).join('')}
@@ -257,6 +348,11 @@ class Game {
         this.app.querySelector('#hudEquippedBox').addEventListener('click', () => this.renderCollectionScreen());
         this.app.querySelector('#hudStarsBox').addEventListener('click', () => this.renderGachaScreen());
 
+        if (mission && !mission.done) {
+            const target = this.app.querySelector(`[data-op="${mission.op}"]`);
+            if (target) target.classList.add('mission-target');
+        }
+
         this.app.querySelectorAll('[data-op]').forEach(btn => {
             btn.addEventListener('click', () => {
                 this.currentOperator = btn.dataset.op;
@@ -267,6 +363,7 @@ class Game {
 
     startGame() {
         this.score = 0;
+        this.correctCount = 0;
         this.questionCount = 0;
         
         if (this.currentOperator === 'special') {
@@ -497,6 +594,7 @@ class Game {
             // Remove from failures on success in any mode (or just in special)
             if (this.currentQuestion) this.removeFailedProblem(this.currentQuestion);
 
+            this.correctCount++;
             this.score += 10;
             if (this.score > this.highScores[this.currentOperator]) {
                 this.highScores[this.currentOperator] = this.score;
@@ -579,8 +677,24 @@ class Game {
 
         const isBlankTheme = ['intro-add-blank', 'intro-sub-blank'].includes(this.currentOperator);
 
-        const earnedStars = Math.floor(this.score / 10);
-        this.totalStars += earnedStars;
+        // 星は「正解した数」だけで決まる。まちがえても星は減らないので、
+        // むずかしい修行に挑戦しても損をしない。
+        const multiplier = STAR_MULTIPLIERS[this.currentOperator] || 1;
+        const baseStars = this.correctCount;
+        const earnedStars = Math.floor(baseStars * multiplier);
+
+        let missionCleared = false;
+        if (this.dailyMission
+            && !this.dailyMission.done
+            && this.dailyMission.op === this.currentOperator
+            && this.correctCount >= this.dailyMission.target) {
+            this.dailyMission.done = true;
+            this.saveDailyMission();
+            missionCleared = true;
+        }
+
+        const bonusStars = missionCleared ? DAILY_BONUS_STARS : 0;
+        this.totalStars += earnedStars + bonusStars;
         localStorage.setItem('keisanNinjaTotalStars', this.totalStars.toString());
 
         let newScrollUnlocked = null;
@@ -614,7 +728,9 @@ class Game {
 
                 <div class="stars-info" style="margin: 16px 0; padding: 14px; background: var(--surface2); border-radius: 16px; border: 2px solid var(--gold); width: 100%; max-width: 320px; box-shadow: 0 4px 12px rgba(0,0,0,0.4);">
                     <div style="font-size: 1.15rem; font-weight: bold; color: var(--gold); margin-bottom: 6px;">🌟 今回ゲット: ${earnedStars}個</div>
-                    <div style="font-size: 1.15rem; font-weight: bold; color: var(--gold); margin-bottom: 12px;">🌟 トータル: ${this.totalStars}個</div>
+                    <div class="star-breakdown">せいかい ${baseStars}問 ${multiplier > 1 ? `× ${multiplier}ばい（${MODE_LABELS[this.currentOperator]}）` : ''}</div>
+                    ${missionCleared ? `<div class="mission-cleared-notice">🎯 きょうの任務 たっせい！ ＋${DAILY_BONUS_STARS}🌟</div>` : ''}
+                    <div style="font-size: 1.15rem; font-weight: bold; color: var(--gold); margin: 10px 0 12px;">🌟 トータル: ${this.totalStars}個</div>
                     <div style="display: flex; gap: 8px;">
                         <button class="rbtn store-btn" style="background: var(--gold); color: #000; font-size: 0.95rem; padding: 12px;">🏪 ガチャへ</button>
                         <button class="rbtn result-collection-btn" style="background: linear-gradient(135deg, #8e44ad, #9b59b6); color: #fff; font-size: 0.95rem; padding: 12px;">📖 ずかん</button>
