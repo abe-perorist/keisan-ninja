@@ -727,6 +727,29 @@ class Game {
         setTimeout(() => this.playTone(480, 'triangle', 0.12, 0.2), 120);
     }
 
+    playSuspenseDrum() {
+        // Dramatic ninja drum roll & anticipation heartbeat
+        const beats = [
+            { freq: 110, time: 0 },
+            { freq: 120, time: 200 },
+            { freq: 130, time: 380 },
+            { freq: 140, time: 540 },
+            { freq: 160, time: 680 },
+            { freq: 180, time: 800 },
+            { freq: 220, time: 900 },
+        ];
+        beats.forEach(b => {
+            setTimeout(() => this.playTone(b.freq, 'sine', 0.1, 0.3), b.time);
+        });
+    }
+
+    playNinjaSmokePopSound() {
+        // Ninja "Doron!" smoke puff sound (whoosh + quick burst)
+        this.playTone(180, 'triangle', 0.08, 0.35);
+        setTimeout(() => this.playTone(440, 'square', 0.1, 0.25), 40);
+        setTimeout(() => this.playTone(880, 'sine', 0.15, 0.2), 90);
+    }
+
     playCapsuleOpenSound(maxRarity = 1) {
         if (maxRarity === 5) {
             // Godly cosmic fanfare
@@ -886,12 +909,72 @@ class Game {
     }
 
     showGachaRevealModal(outcome) {
-        const { results, totalRefund } = outcome;
+        const { results } = outcome;
         const maxRarity = Math.max(...results.map(r => r.item.rarity));
-        this.playCapsuleOpenSound(maxRarity);
 
         const overlay = document.createElement('div');
         overlay.className = 'modal-overlay';
+
+        // Stage 1: Interactive Suspense Stage ("カプセルをタップしてあけよう！")
+        const capsuleEmoji = maxRarity >= 5 ? '👑' : maxRarity >= 4 ? '🔥' : maxRarity >= 3 ? '✨' : '🎁';
+        overlay.innerHTML = `
+            <div class="modal-content reveal-modal" id="gachaModalContent">
+                <div class="modal-title">🥷 秘伝カプセル 出現！</div>
+                <div class="gacha-suspense-box" id="suspenseStage">
+                    <p class="suspense-tap-prompt">👆 タップして巻物をひらけ！</p>
+                    <div class="suspense-capsule cap-tier-${maxRarity}" id="suspenseCapsule">
+                        <span>${capsuleEmoji}</span>
+                    </div>
+                    <p style="font-size: 0.85rem; color: var(--muted); font-weight: bold;">
+                        ${maxRarity >= 5 ? '🌌 神話のオーラを感じる…！' : maxRarity >= 4 ? '🔥 凄まじい妖気がただよっている…！' : 'なにが出るかな…？'}
+                    </p>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+        this.playSuspenseDrum();
+
+        const suspenseCapsule = overlay.querySelector('#suspenseCapsule');
+        let isOpened = false;
+
+        const openCapsuleAction = () => {
+            if (isOpened) return;
+            isOpened = true;
+
+            // Trigger Smoke explosion (ドロン！) and sound
+            this.playNinjaSmokePopSound();
+
+            const smokeWrap = document.createElement('div');
+            smokeWrap.className = 'ninja-smoke-wrap';
+            smokeWrap.innerHTML = `
+                <div class="smoke-cloud" style="--dx:-40px; --dy:-40px;"></div>
+                <div class="smoke-cloud" style="--dx:40px; --dy:-30px;"></div>
+                <div class="smoke-cloud" style="--dx:-30px; --dy:40px;"></div>
+                <div class="smoke-cloud" style="--dx:30px; --dy:35px;"></div>
+                <div class="doron-text">ドロン！💨</div>
+            `;
+            suspenseCapsule.appendChild(smokeWrap);
+
+            // Wait brief moment for the smoke, then reveal items
+            setTimeout(() => {
+                this.renderRevealResults(overlay, outcome, maxRarity);
+            }, 550);
+        };
+
+        suspenseCapsule.addEventListener('click', openCapsuleAction);
+    }
+
+    renderRevealResults(overlay, outcome, maxRarity) {
+        const { results, totalRefund } = outcome;
+        this.playCapsuleOpenSound(maxRarity);
+
+        let cutinHtml = '';
+        if (maxRarity === 5) {
+            cutinHtml = '<div class="ninja-cutin-banner god">🌌 降臨！ 神話ゴッド忍法解放！！ 🌌</div>';
+        } else if (maxRarity === 4) {
+            cutinHtml = '<div class="ninja-cutin-banner">🔥 覚醒！ 超絶レジェンド奥義発動！！ 🔥</div>';
+        }
 
         let contentHtml = '';
         if (results.length === 1) {
@@ -931,27 +1014,39 @@ class Game {
             </div>
         ` : '';
 
-        overlay.innerHTML = `
-            <div class="modal-content reveal-modal">
-                <div class="modal-title">🎉 ガチャ結果発表！</div>
-                ${contentHtml}
-                ${refundNotice}
-                <div style="display: flex; flex-direction: column; gap: 10px; width: 100%;">
-                    <button class="rbtn rbtn-retry modal-pull-again" style="background: var(--gold); color: #000; width: 100%;">もう一度まわす</button>
-                    <button class="rbtn home-nav-collection modal-go-collection" style="width: 100%;">ずかんで確認・そうび</button>
-                    <button class="rbtn rbtn-back modal-close-btn" style="width: 100%;">とじる</button>
-                </div>
+        // Add celebratory confetti for rare pulls (★3+)
+        let confettiHtml = '';
+        if (maxRarity >= 3) {
+            const confettiColors = ['#f1c40f', '#e74c3c', '#3498db', '#2ecc71', '#9b59b6', '#ffffff'];
+            const pieces = Array.from({ length: 24 }).map(() => {
+                const color = confettiColors[Math.floor(Math.random() * confettiColors.length)];
+                const startX = Math.floor(Math.random() * 300) - 50 + 'px';
+                const endX = Math.floor(Math.random() * 360) - 80 + 'px';
+                return `<div class="confetti-piece" style="--cp-color: ${color}; --startX: ${startX}; --endX: ${endX}; left: 20%; animation-delay: ${Math.random() * 0.5}s;"></div>`;
+            }).join('');
+            confettiHtml = `<div class="confetti-container">${pieces}</div>`;
+        }
+
+        const modalContent = overlay.querySelector('#gachaModalContent');
+        modalContent.innerHTML = `
+            ${confettiHtml}
+            <div class="modal-title">🎉 ガチャ結果発表！</div>
+            ${cutinHtml}
+            ${contentHtml}
+            ${refundNotice}
+            <div style="display: flex; flex-direction: column; gap: 10px; width: 100%;">
+                <button class="rbtn rbtn-retry modal-pull-again" style="background: var(--gold); color: #000; width: 100%;">もう一度まわす</button>
+                <button class="rbtn home-nav-collection modal-go-collection" style="width: 100%;">ずかんで確認・そうび</button>
+                <button class="rbtn rbtn-back modal-close-btn" style="width: 100%;">とじる</button>
             </div>
         `;
 
-        document.body.appendChild(overlay);
-
-        overlay.querySelector('.modal-close-btn').addEventListener('click', () => {
+        modalContent.querySelector('.modal-close-btn').addEventListener('click', () => {
             overlay.remove();
             this.renderGachaScreen();
         });
 
-        overlay.querySelector('.modal-pull-again').addEventListener('click', () => {
+        modalContent.querySelector('.modal-pull-again').addEventListener('click', () => {
             overlay.remove();
             this.renderGachaScreen();
             if (this.totalStars >= GACHA_PRICES.SINGLE) {
@@ -959,7 +1054,7 @@ class Game {
             }
         });
 
-        overlay.querySelector('.modal-go-collection').addEventListener('click', () => {
+        modalContent.querySelector('.modal-go-collection').addEventListener('click', () => {
             overlay.remove();
             this.renderCollectionScreen();
         });
