@@ -1313,3 +1313,38 @@ body:has(.result-screen.blank-theme) {
     background: var(--green);
     color: #fff;
 }
+
+/* Rarity 4: 伝説レジェンド (Rainbow / Fiery Aura) */
+.reveal-card.rarity-4 {
+    border-color: #ff4757;
+    background: linear-gradient(135deg, rgba(255, 71, 87, 0.2), rgba(255, 165, 2, 0.2));
+    box-shadow: 0 0 25px rgba(255, 71, 87, 0.6), 0 0 10px rgba(255, 165, 2, 0.5);
+    animation: legendPulse 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes legendPulse {
+    0% { transform: scale(1); box-shadow: 0 0 20px rgba(255, 71, 87, 0.5); }
+    100% { transform: scale(1.03); box-shadow: 0 0 35px rgba(255, 71, 87, 0.8), 0 0 20px rgba(255, 165, 2, 0.7); }
+}
+
+/* Rarity 5: 神話ゴッド (Cosmic Prism / Godly Radiance) */
+.reveal-card.rarity-5 {
+    border: 3px solid #fff;
+    background: linear-gradient(135deg, rgba(112, 161, 255, 0.35), rgba(255, 159, 243, 0.35), rgba(254, 202, 87, 0.35));
+    box-shadow: 0 0 35px rgba(112, 161, 255, 0.8), 0 0 25px rgba(255, 159, 243, 0.7);
+    animation: godGlow 2s ease-in-out infinite;
+}
+
+@keyframes godGlow {
+    0%, 100% { filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.9)); transform: scale(1); }
+    50% { filter: drop-shadow(0 0 24px rgba(255, 215, 0, 1)); transform: scale(1.05); }
+}
+
+.item-card.rarity-4-card {
+    border-color: rgba(255, 71, 87, 0.5);
+}
+
+.item-card.rarity-5-card {
+    border-color: rgba(255, 215, 0, 0.7);
+    box-shadow: 0 0 12px rgba(255, 215, 0, 0.3);
+}
