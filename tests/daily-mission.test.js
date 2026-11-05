@@ -2,6 +2,8 @@
 // game.js は DOMContentLoaded でしか起動しないので、document と
 // localStorage を最小限スタブしてからインポートする。
 
+import assert from 'node:assert';
+
 const store = new Map();
 globalThis.localStorage = {
     getItem: k => (store.has(k) ? store.get(k) : null),
@@ -14,14 +16,9 @@ globalThis.Audio = class { load() {} play() { return Promise.resolve(); } };
 
 const { Game } = await import('../js/game.js');
 
-let failures = 0;
 function check(label, cond) {
-    if (cond) {
-        console.log(`  ✅ ${label}`);
-    } else {
-        console.error(`  ❌ ${label}`);
-        failures++;
-    }
+    assert.ok(cond, label);
+    console.log(`  ✅ ${label}`);
 }
 
 const noScores = {
@@ -99,8 +96,4 @@ console.log('--- loadOrCreateDailyMission ---');
     check('壊れたデータでも作り直せる', Game.prototype.loadOrCreateDailyMission.call(c).done === false);
 }
 
-if (failures > 0) {
-    console.error(`\n${failures} 件失敗 ❌`);
-    process.exit(1);
-}
 console.log('\nAll daily mission tests passed! ✅');
