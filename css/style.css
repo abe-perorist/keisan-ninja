@@ -1344,10 +1344,6 @@ body:has(.result-screen.blank-theme) {
     border-color: rgba(255, 71, 87, 0.5);
 }
 
-.item-card.rarity-4-card {
-    border-color: rgba(255, 71, 87, 0.5);
-}
-
 .item-card.rarity-5-card {
     border-color: rgba(255, 215, 0, 0.7);
     box-shadow: 0 0 12px rgba(255, 215, 0, 0.3);
