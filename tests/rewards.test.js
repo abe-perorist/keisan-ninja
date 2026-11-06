@@ -1,5 +1,6 @@
 import assert from 'node:assert';
 import {
+    REWARD_ITEMS,
     DUPLICATE_REFUNDS,
     getOwnedItemIds,
     saveOwnedItemIds,
@@ -20,6 +21,33 @@ globalThis.localStorage = {
 };
 
 console.log('--- Testing rewards.js ---');
+
+// Catalog integrity and size
+assert.strictEqual(REWARD_ITEMS.length, 42, 'REWARD_ITEMS pool should contain 42 items (doubled)');
+
+const ids = new Set();
+const names = new Set();
+const rarityCounts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+
+for (const reward of REWARD_ITEMS) {
+    assert.ok(reward.id && typeof reward.id === 'string', `Item id must be a non-empty string: ${reward.id}`);
+    assert.ok(!ids.has(reward.id), `Item id must be unique: ${reward.id}`);
+    ids.add(reward.id);
+
+    assert.ok(reward.name && typeof reward.name === 'string', `Item name must be a non-empty string: ${reward.name}`);
+    assert.ok(!names.has(reward.name), `Item name must be unique: ${reward.name}`);
+    names.add(reward.name);
+
+    assert.ok(reward.emoji && typeof reward.emoji === 'string', `Item emoji must be non-empty string for ${reward.id}`);
+    assert.ok([1, 2, 3, 4, 5].includes(reward.rarity), `Item rarity must be 1-5 for ${reward.id}`);
+    assert.ok(reward.rarityLabel && typeof reward.rarityLabel === 'string', `Item rarityLabel required for ${reward.id}`);
+    assert.ok(reward.badgeColor && /^#[0-9a-fA-F]{6}$/.test(reward.badgeColor), `Item badgeColor must be hex color for ${reward.id}`);
+    assert.ok(reward.tagline && typeof reward.tagline === 'string', `Item tagline required for ${reward.id}`);
+
+    rarityCounts[reward.rarity] = (rarityCounts[reward.rarity] || 0) + 1;
+}
+
+assert.deepStrictEqual(rarityCounts, { 1: 10, 2: 10, 3: 10, 4: 8, 5: 4 }, 'Rarity distribution should be doubled proportionally');
 
 // 1. Initial State
 mockStorage.keisanNinjaOwnedItems = undefined;
