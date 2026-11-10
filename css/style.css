@@ -1656,3 +1656,167 @@ body:has(.result-screen.blank-theme) {
     font-size: 0.95rem;
     font-weight: 900;
 }
+
+/* ===== ★6 幻の龍神 / 忍法ゲージ / コンプリート報酬 ===== */
+
+/* Rarity 6: 幻の龍神 (Dragon Aura) */
+.reveal-card.rarity-6 {
+    border: 3px solid #ff4757;
+    background: linear-gradient(135deg, rgba(255, 71, 87, 0.35), rgba(108, 92, 231, 0.35), rgba(0, 206, 201, 0.3));
+    box-shadow: 0 0 45px rgba(255, 71, 87, 0.9), 0 0 25px rgba(108, 92, 231, 0.8);
+    animation: dragonAura 1.6s ease-in-out infinite;
+}
+
+@keyframes dragonAura {
+    0%, 100% { filter: drop-shadow(0 0 14px rgba(255, 71, 87, 0.95)) hue-rotate(0deg); transform: scale(1); }
+    50%      { filter: drop-shadow(0 0 30px rgba(108, 92, 231, 1)) hue-rotate(25deg); transform: scale(1.06); }
+}
+
+.item-card.rarity-6-card {
+    border-color: #ff4757;
+    box-shadow: 0 0 16px rgba(255, 71, 87, 0.5);
+}
+
+.suspense-capsule.cap-tier-6 {
+    background: radial-gradient(circle at 35% 35%, #fff, #ff7675 30%, #ff4757 60%, #2d3436);
+    border: 5px solid #ffeaa7;
+    box-shadow: 0 0 60px rgba(255, 71, 87, 1), 0 0 40px rgba(108, 92, 231, 0.9);
+    animation: intenseWobble 0.4s infinite ease-in-out;
+}
+
+.ninja-cutin-banner.dragon {
+    background: linear-gradient(90deg, transparent, rgba(255,71,87,0.95) 18%, rgba(255,234,167,1) 50%, rgba(108,92,231,0.95) 82%, transparent);
+    box-shadow: 0 0 35px rgba(255, 71, 87, 0.9);
+}
+
+/* 忍法ゲージ（天井） */
+.pity-gauge-box {
+    width: 100%;
+    max-width: 360px;
+    margin: 0 auto 14px;
+    padding: 10px 14px;
+    border-radius: 14px;
+    background: var(--surface2);
+    border: 2px solid rgba(255, 71, 87, 0.5);
+}
+
+.pity-gauge-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+    font-weight: 900;
+    color: var(--gold);
+    margin-bottom: 6px;
+}
+
+.pity-gauge-track {
+    height: 12px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.45);
+    overflow: hidden;
+}
+
+.pity-gauge-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #ff7675, #ff4757, #6c5ce7);
+    transition: width 0.4s ease;
+}
+
+.pity-gauge-note {
+    margin-top: 6px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    color: var(--muted);
+    text-align: center;
+}
+
+.pity-notice {
+    margin-bottom: 12px;
+    padding: 8px 14px;
+    border-radius: 12px;
+    background: rgba(255, 71, 87, 0.18);
+    border: 1px solid #ff4757;
+    color: #ff7675;
+    font-size: 0.95rem;
+    font-weight: 900;
+}
+
+.rates-dragon {
+    color: #ff7675;
+    font-weight: 900;
+}
+
+/* はじめての修行ボーナス */
+.challenge-bonus-target {
+    position: relative;
+    outline: 3px dashed #a29bfe;
+    outline-offset: 2px;
+}
+
+.challenge-bonus-target::before {
+    content: '🎁';
+    position: absolute;
+    top: -10px;
+    right: -6px;
+    font-size: 1.1rem;
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6));
+    z-index: 1;
+}
+
+.challenge-bonus-notice {
+    margin-top: 8px;
+    padding: 6px 10px;
+    border-radius: 12px;
+    background: rgba(162, 155, 254, 0.2);
+    border: 1px solid #a29bfe;
+    color: #a29bfe;
+    font-size: 0.9rem;
+    font-weight: 900;
+}
+
+/* コンプリート報酬 */
+.award-notice {
+    margin-top: 8px;
+    padding: 6px 10px;
+    border-radius: 12px;
+    background: rgba(243, 156, 18, 0.18);
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    font-size: 0.9rem;
+    font-weight: 900;
+}
+
+.award-badge-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+    margin: 10px 0 4px;
+}
+
+.award-badge {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: var(--surface2);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    font-size: 0.7rem;
+    font-weight: 900;
+    color: var(--muted);
+    opacity: 0.55;
+}
+
+.award-badge.earned {
+    border-color: var(--gold);
+    color: var(--gold);
+    opacity: 1;
+    box-shadow: 0 0 10px rgba(243, 156, 18, 0.35);
+}
+
+.award-badge-icon {
+    font-size: 0.9rem;
+}
