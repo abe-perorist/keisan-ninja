@@ -1,12 +1,18 @@
 import {
     REWARD_ITEMS,
     GACHA_PRICES,
+    PITY_THRESHOLD,
+    COMPLETION_AWARDS,
     getOwnedItemIds,
     getEquippedItemId,
     setEquippedItemId,
     getItemById,
     pullSingleGacha,
     pullMultipleGacha,
+    getPityCount,
+    isTierComplete,
+    claimCompletionAwards,
+    grantRandomUnownedItem,
 } from './rewards.js';
 
 // モードごとの星の倍率。むずかしい修行ほど多くもらえるようにして、
@@ -28,6 +34,9 @@ const MODE_LABELS = {
 };
 
 const DAILY_BONUS_STARS = 20;
+
+// はじめての修行ボーナスで配るものが尽きたとき（★6以外を集めきったとき）の代替。
+const CHALLENGE_FALLBACK_STARS = 100;
 
 export class Game {
     constructor() {
@@ -170,6 +179,39 @@ export class Game {
 
     saveDailyMission() {
         localStorage.setItem('keisanNinjaDailyMission', JSON.stringify(this.dailyMission));
+    }
+
+    // ===== はじめての修行ボーナス（1日1個） =====
+
+    // まだ一度も挑戦していないモード。ハイスコアが0かどうかで判定するので、
+    // 「始めたけど1問も正解できなかった」モードは未挑戦のまま残る。
+    unplayedOps() {
+        return Object.keys(this.highScores).filter(op => !this.highScores[op]);
+    }
+
+    // きょうボーナスの対象になるモード。未挑戦があればそれ全部が対象。
+    // 全モード制覇済みなら、日付をシードに1つだけ指名する。
+    dailyChallengeOps() {
+        const unplayed = this.unplayedOps();
+        if (unplayed.length > 0) return unplayed;
+
+        const ops = Object.keys(this.highScores);
+        let seed = 0;
+        for (const ch of this.todayKey()) seed = (seed * 31 + ch.charCodeAt(0)) % 100000;
+        return [ops[seed % ops.length]];
+    }
+
+    isChallengeBonusUsedToday() {
+        try {
+            const saved = JSON.parse(localStorage.getItem('keisanNinjaChallengeBonus'));
+            return !!saved && saved.date === this.todayKey();
+        } catch {
+            return false;
+        }
+    }
+
+    markChallengeBonusUsed() {
+        localStorage.setItem('keisanNinjaChallengeBonus', JSON.stringify({ date: this.todayKey() }));
     }
 
     saveHighScore(operator, score) {
@@ -353,6 +395,13 @@ export class Game {
             if (target) target.classList.add('mission-target');
         }
 
+        if (!this.isChallengeBonusUsedToday()) {
+            this.dailyChallengeOps().forEach(op => {
+                const target = this.app.querySelector(`[data-op="${op}"]`);
+                if (target) target.classList.add('challenge-bonus-target');
+            });
+        }
+
         this.app.querySelectorAll('[data-op]').forEach(btn => {
             btn.addEventListener('click', () => {
                 this.currentOperator = btn.dataset.op;
@@ -365,6 +414,12 @@ export class Game {
         this.score = 0;
         this.correctCount = 0;
         this.questionCount = 0;
+
+        // ハイスコアはプレイ中に更新されてしまうので、対象かどうかはここで確定させる
+        this.challengeBonusOp = (!this.isChallengeBonusUsedToday()
+            && this.dailyChallengeOps().includes(this.currentOperator))
+            ? this.currentOperator
+            : null;
         
         if (this.currentOperator === 'special') {
             this.trainingPool = this.loadFailedProblems();
@@ -694,7 +749,23 @@ export class Game {
         }
 
         const bonusStars = missionCleared ? DAILY_BONUS_STARS : 0;
-        this.totalStars += earnedStars + bonusStars;
+
+        // はじめての修行ボーナス。1問も正解できていないうちは渡さない
+        // （開始してすぐ抜けるだけでもらえてしまうため）。
+        let challengeGift = null;
+        let challengeGiftStars = 0;
+        if (this.challengeBonusOp === this.currentOperator && this.correctCount > 0) {
+            challengeGift = grantRandomUnownedItem();
+            if (!challengeGift) challengeGiftStars = CHALLENGE_FALLBACK_STARS;
+            this.markChallengeBonusUsed();
+            this.challengeBonusOp = null;
+        }
+
+        // コンプリート報酬はボーナスでそろう可能性があるので、必ずその後に判定する
+        const newAwards = claimCompletionAwards();
+        const awardStars = newAwards.reduce((sum, a) => sum + a.stars, 0);
+
+        this.totalStars += earnedStars + bonusStars + challengeGiftStars + awardStars;
         localStorage.setItem('keisanNinjaTotalStars', this.totalStars.toString());
 
         let newScrollUnlocked = null;
@@ -730,6 +801,9 @@ export class Game {
                     <div style="font-size: 1.15rem; font-weight: bold; color: var(--gold); margin-bottom: 6px;">🌟 今回ゲット: ${earnedStars}個</div>
                     <div class="star-breakdown">せいかい ${baseStars}問 ${multiplier > 1 ? `× ${multiplier}ばい（${MODE_LABELS[this.currentOperator]}）` : ''}</div>
                     ${missionCleared ? `<div class="mission-cleared-notice">🎯 きょうの任務 たっせい！ ＋${DAILY_BONUS_STARS}🌟</div>` : ''}
+                    ${challengeGift ? `<div class="challenge-bonus-notice">🎁 はじめての修行ボーナス！ ${challengeGift.emoji} <b>${challengeGift.name}</b> をゲット！</div>` : ''}
+                    ${challengeGiftStars > 0 ? `<div class="challenge-bonus-notice">🎁 はじめての修行ボーナス！ ＋${challengeGiftStars}🌟</div>` : ''}
+                    ${newAwards.map(a => `<div class="award-notice">🏅 <b>${a.title}</b> 達成！${a.stars > 0 ? ` ＋${a.stars}🌟` : ''}${a.grantItemId ? ` ${getItemById(a.grantItemId).emoji} <b>${getItemById(a.grantItemId).name}</b> をゲット！` : ''}</div>`).join('')}
                     <div style="font-size: 1.15rem; font-weight: bold; color: var(--gold); margin: 10px 0 12px;">🌟 トータル: ${this.totalStars}個</div>
                     <div style="display: flex; gap: 8px;">
                         <button class="rbtn store-btn" style="background: var(--gold); color: #000; font-size: 0.95rem; padding: 12px;">🏪 ガチャへ</button>
@@ -903,6 +977,7 @@ export class Game {
     }
 
     renderGachaScreen() {
+        const pityCount = getPityCount();
         this.app.innerHTML = `
             <div class="screen gacha-screen">
                 <div class="gacha-header">
@@ -937,6 +1012,19 @@ export class Game {
                     </div>
                 </div>
 
+                <div class="pity-gauge-box">
+                    <div class="pity-gauge-label">
+                        <span>🔥 奥義ゲージ</span>
+                        <span><b>${pityCount}</b> / ${PITY_THRESHOLD}</span>
+                    </div>
+                    <div class="pity-gauge-track">
+                        <div class="pity-gauge-fill" style="width: ${Math.min(100, (pityCount / PITY_THRESHOLD) * 100)}%;"></div>
+                    </div>
+                    <div class="pity-gauge-note">
+                        あと <b>${PITY_THRESHOLD - pityCount}回</b> まわせば 🐲 龍神忍者 が かくてい！
+                    </div>
+                </div>
+
                 <div class="gacha-action-area">
                     <button class="gacha-btn gacha-btn-single" id="btnPullSingle" ${this.totalStars < GACHA_PRICES.SINGLE ? 'disabled' : ''}>
                         <span>🎯 1回まわす</span>
@@ -952,8 +1040,9 @@ export class Game {
                 </div>
 
                 <div class="gacha-rates-badge">
-                    【排出率】 ⭐ ノーマル 50% ｜ ⭐⭐ レア 30% ｜ ⭐⭐⭐ 激レア 14%<br>
+                    【排出率】 ⭐ ノーマル 49.5% ｜ ⭐⭐ レア 30% ｜ ⭐⭐⭐ 激レア 14%<br>
                     🌟⭐⭐⭐⭐ 超絶レジェンド 5% ｜ 👑⭐⭐⭐⭐⭐ 神話ゴッド 1%<br>
+                    <span class="rates-dragon">🐲 幻の龍神 0.5%（${PITY_THRESHOLD}回まわせば かくてい！）</span><br>
                     ※すでにもっている忍者がでると、星がボーナスでお返しされます！
                 </div>
             </div>
@@ -1019,6 +1108,14 @@ export class Game {
                     localStorage.setItem('keisanNinjaTotalStars', this.totalStars.toString());
                 }
 
+                // ガチャでレアリティ帯がそろうことがあるので、ここでも報酬を判定する
+                outcome.newAwards = claimCompletionAwards();
+                const awardStars = outcome.newAwards.reduce((sum, a) => sum + a.stars, 0);
+                if (awardStars > 0) {
+                    this.totalStars += awardStars;
+                    localStorage.setItem('keisanNinjaTotalStars', this.totalStars.toString());
+                }
+
                 this.showGachaRevealModal(outcome);
             }, 600);
         }, 800);
@@ -1032,7 +1129,7 @@ export class Game {
         overlay.className = 'modal-overlay';
 
         // Stage 1: Interactive Suspense Stage ("カプセルをタップしてあけよう！")
-        const capsuleEmoji = maxRarity >= 5 ? '👑' : maxRarity >= 4 ? '🔥' : maxRarity >= 3 ? '✨' : '🎁';
+        const capsuleEmoji = maxRarity >= 6 ? '🐲' : maxRarity >= 5 ? '👑' : maxRarity >= 4 ? '🔥' : maxRarity >= 3 ? '✨' : '🎁';
         overlay.innerHTML = `
             <div class="modal-content reveal-modal" id="gachaModalContent">
                 <div class="modal-title">🥷 秘伝カプセル 出現！</div>
@@ -1042,7 +1139,7 @@ export class Game {
                         <span>${capsuleEmoji}</span>
                     </div>
                     <p style="font-size: 0.85rem; color: var(--muted); font-weight: bold;">
-                        ${maxRarity >= 5 ? '🌌 神話のオーラを感じる…！' : maxRarity >= 4 ? '🔥 凄まじい妖気がただよっている…！' : 'なにが出るかな…？'}
+                        ${maxRarity >= 6 ? '🐲 天が鳴動している…！！まさか…！？' : maxRarity >= 5 ? '🌌 神話のオーラを感じる…！' : maxRarity >= 4 ? '🔥 凄まじい妖気がただよっている…！' : 'なにが出るかな…？'}
                     </p>
                 </div>
             </div>
@@ -1082,11 +1179,13 @@ export class Game {
     }
 
     renderRevealResults(overlay, outcome, maxRarity) {
-        const { results, totalRefund } = outcome;
+        const { results, totalRefund, newAwards = [] } = outcome;
         this.playCapsuleOpenSound(maxRarity);
 
         let cutinHtml = '';
-        if (maxRarity === 5) {
+        if (maxRarity === 6) {
+            cutinHtml = '<div class="ninja-cutin-banner dragon">🐲 顕現！！ 幻の龍神 ここに降臨！！ 🐲</div>';
+        } else if (maxRarity === 5) {
             cutinHtml = '<div class="ninja-cutin-banner god">🌌 降臨！ 神話ゴッド忍法解放！！ 🌌</div>';
         } else if (maxRarity === 4) {
             cutinHtml = '<div class="ninja-cutin-banner">🔥 覚醒！ 超絶レジェンド奥義発動！！ 🔥</div>';
@@ -1130,6 +1229,14 @@ export class Game {
             </div>
         ` : '';
 
+        const pityNotice = results.some(r => r.isPity) ? `
+            <div class="pity-notice">🔥 奥義ゲージ まんたん！ 龍神忍者を かくてい で よびだした！</div>
+        ` : '';
+
+        const awardNotice = newAwards.map(a => `
+            <div class="award-notice">🏅 <b>${a.title}</b> 達成！${a.stars > 0 ? ` ＋${a.stars}🌟` : ''}${a.grantItemId ? ` ${getItemById(a.grantItemId).emoji} <b>${getItemById(a.grantItemId).name}</b> をゲット！` : ''}</div>
+        `).join('');
+
         // Add celebratory confetti for rare pulls (★3+)
         let confettiHtml = '';
         if (maxRarity >= 3) {
@@ -1149,7 +1256,9 @@ export class Game {
             <div class="modal-title">🎉 ガチャ結果発表！</div>
             ${cutinHtml}
             ${contentHtml}
+            ${pityNotice}
             ${refundNotice}
+            ${awardNotice}
             <div style="display: flex; flex-direction: column; gap: 10px; width: 100%;">
                 <button class="rbtn rbtn-retry modal-pull-again" style="background: var(--gold); color: #000; width: 100%;">もう一度まわす</button>
                 <button class="rbtn home-nav-collection modal-go-collection" style="width: 100%;">ずかんで確認・そうび</button>
@@ -1203,6 +1312,18 @@ export class Game {
                     <div class="progress-bar-bg">
                         <div class="progress-bar-fill" style="width: ${percent}%;"></div>
                     </div>
+                </div>
+
+                <div class="award-badge-row">
+                    ${COMPLETION_AWARDS.map(award => {
+                        const done = isTierComplete(award.rarities, ownedIds);
+                        return `
+                            <div class="award-badge ${done ? 'earned' : ''}" title="${award.title}">
+                                <span class="award-badge-icon">${done ? '🏅' : '🔒'}</span>
+                                <span class="award-badge-title">${award.title}</span>
+                            </div>
+                        `;
+                    }).join('')}
                 </div>
 
                 <div class="collection-grid">
