@@ -1820,3 +1820,236 @@ body:has(.result-screen.blank-theme) {
 .award-badge-icon {
     font-size: 0.9rem;
 }
+
+/* ===== だんべつ修行 ===== */
+
+/* ガチャ・ずかんの位置は変えたくないので、段は横幅いっぱいで上に置く */
+.home-nav-dan {
+    grid-column: 1 / -1;
+    background: linear-gradient(135deg, #c0392b, #e74c3c);
+}
+
+.home-nav-sub {
+    margin-left: auto;
+    font-size: 0.78rem;
+    font-weight: 700;
+    opacity: 0.85;
+    background: rgba(0, 0, 0, 0.25);
+    padding: 3px 10px;
+    border-radius: 999px;
+}
+
+.dan-screen {
+    padding: 16px 14px 32px;
+    gap: 16px;
+    align-items: stretch;
+}
+
+.dan-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.dan-back-btn {
+    background: var(--surface2);
+    color: var(--text);
+    border: none;
+    border-radius: 999px;
+    padding: 9px 16px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.dan-back-btn:active {
+    transform: translateY(2px);
+}
+
+.dan-title {
+    font-size: 1.25rem;
+    font-weight: 900;
+}
+
+.dan-lead {
+    font-size: 0.85rem;
+    line-height: 1.6;
+    color: var(--muted);
+}
+
+.dan-lead b {
+    color: var(--gold);
+}
+
+.dan-group {
+    background: var(--surface);
+    border-radius: 18px;
+    padding: 14px;
+    margin-bottom: 16px;
+}
+
+.dan-group-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.dan-group-label {
+    font-size: 1.05rem;
+    font-weight: 900;
+    margin-right: 8px;
+}
+
+.dan-group-desc {
+    font-size: 0.75rem;
+    color: var(--muted);
+}
+
+.dan-group-count {
+    flex-shrink: 0;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--muted);
+    background: var(--surface2);
+    padding: 5px 11px;
+    border-radius: 999px;
+}
+
+.dan-group-count.complete {
+    color: #000;
+    background: var(--gold);
+}
+
+.dan-group-reward {
+    margin-top: 11px;
+    font-size: 0.78rem;
+    text-align: center;
+    color: var(--gold);
+}
+
+.dan-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 9px;
+}
+
+.dan-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 11px 6px 9px;
+    border: 2px solid var(--surface2);
+    border-radius: 14px;
+    background: var(--surface2);
+    color: var(--text);
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.dan-card:active {
+    transform: translateY(2px);
+}
+
+.dan-card.mastered {
+    border-color: var(--gold);
+    background: linear-gradient(160deg, var(--surface2), rgba(243, 156, 18, 0.18));
+}
+
+.dan-card-badge {
+    position: absolute;
+    top: -8px;
+    right: -5px;
+    font-size: 1.1rem;
+}
+
+.dan-card-emoji {
+    font-size: 1.3rem;
+    line-height: 1;
+}
+
+.dan-card-label {
+    font-size: 0.82rem;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
+.dan-card-count {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: var(--muted);
+}
+
+.dan-card.mastered .dan-card-count {
+    color: var(--gold);
+}
+
+.dan-bar {
+    display: block;
+    width: 100%;
+    height: 5px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.12);
+    overflow: hidden;
+    margin: 2px 0;
+}
+
+.dan-bar > span {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.4s ease;
+}
+
+/* 結果画面の段パネル */
+.dan-result {
+    width: 100%;
+    max-width: 320px;
+    margin: 14px 0 4px;
+    padding: 13px;
+    background: var(--surface2);
+    border: 2px solid var(--surface);
+    border-radius: 16px;
+    text-align: center;
+}
+
+.dan-result.mastered {
+    border-color: var(--gold);
+}
+
+.dan-result-head {
+    font-size: 1rem;
+    font-weight: 900;
+    margin-bottom: 8px;
+}
+
+.dan-result-count {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--muted);
+    margin-top: 4px;
+}
+
+.dan-remaining {
+    margin-top: 6px;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--blue);
+}
+
+.dan-mastered-badge {
+    margin-top: 8px;
+    font-size: 1.1rem;
+    font-weight: 900;
+    color: var(--gold);
+}
+
+.dan-new-notice {
+    margin-top: 6px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--correct);
+}
