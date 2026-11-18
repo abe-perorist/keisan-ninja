@@ -2053,3 +2053,191 @@ body:has(.result-screen.blank-theme) {
     font-weight: 700;
     color: var(--correct);
 }
+
+/* ===== 忍術帳 ===== */
+
+.home-nav-jutsu {
+    grid-column: 1 / -1;
+    background: linear-gradient(135deg, #2c3e50, #4a69bd);
+}
+
+.jutsu-screen {
+    padding: 16px 14px 32px;
+    gap: 16px;
+    align-items: stretch;
+}
+
+.jutsu-group {
+    background: var(--surface);
+    border-radius: 18px;
+    padding: 14px;
+    margin-bottom: 16px;
+}
+
+.jutsu-group-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.jutsu-group-label {
+    font-size: 1.05rem;
+    font-weight: 900;
+    margin-right: 8px;
+}
+
+.jutsu-group-desc {
+    font-size: 0.75rem;
+    color: var(--muted);
+}
+
+.jutsu-group-count {
+    flex-shrink: 0;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--muted);
+    background: var(--surface2);
+    padding: 5px 11px;
+    border-radius: 999px;
+}
+
+.jutsu-list {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+}
+
+.jutsu-card {
+    padding: 12px 13px;
+    border: 2px solid var(--surface2);
+    border-left-width: 5px;
+    border-radius: 14px;
+    background: var(--surface2);
+}
+
+/* おぼえた忍術だけ色がつく。まだのものは暗いが「？」にはしない */
+.jutsu-card.learned {
+    border-color: var(--jc);
+    background: linear-gradient(135deg, var(--surface2), rgba(255, 255, 255, 0.06));
+}
+
+.jutsu-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.jutsu-card-emoji {
+    font-size: 1.3rem;
+    line-height: 1;
+    filter: grayscale(1) opacity(0.45);
+}
+
+.jutsu-card.learned .jutsu-card-emoji {
+    filter: none;
+}
+
+.jutsu-card-name {
+    font-size: 1rem;
+    font-weight: 900;
+    color: var(--muted);
+}
+
+.jutsu-card.learned .jutsu-card-name {
+    color: var(--jc);
+}
+
+/* 自信につながる言葉が主役なので、ここをいちばん大きく読みやすくする */
+.jutsu-card-praise {
+    margin-top: 7px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1.6;
+    color: var(--text);
+}
+
+.jutsu-card-cond {
+    margin-top: 6px;
+    font-size: 0.72rem;
+    line-height: 1.5;
+    color: var(--muted);
+}
+
+.jutsu-card-todo {
+    margin-top: 7px;
+    font-size: 0.82rem;
+    line-height: 1.6;
+    color: var(--muted);
+}
+
+.jutsu-card-prog {
+    margin-top: 4px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-align: right;
+    color: var(--muted);
+}
+
+.jutsu-bar {
+    display: block;
+    width: 100%;
+    height: 5px;
+    margin-top: 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+}
+
+.jutsu-bar > span {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.4s ease;
+}
+
+/* おぼえた瞬間のモーダル */
+.jutsu-learned {
+    padding: 18px 14px;
+    border: 2px solid var(--jc);
+    border-radius: 18px;
+    background: linear-gradient(160deg, var(--surface2), rgba(255, 255, 255, 0.05));
+    text-align: center;
+}
+
+.jutsu-learned-emoji {
+    font-size: 3rem;
+    line-height: 1;
+    animation: jutsu-pop 0.5s ease;
+}
+
+@keyframes jutsu-pop {
+    0% { transform: scale(0.3) rotate(-20deg); opacity: 0; }
+    70% { transform: scale(1.15) rotate(5deg); }
+    100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+
+.jutsu-learned-name {
+    margin-top: 8px;
+    font-size: 1.5rem;
+    font-weight: 900;
+    color: var(--jc);
+}
+
+.jutsu-learned-praise {
+    margin-top: 12px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    line-height: 1.7;
+    color: var(--text);
+}
+
+.jutsu-learned-cond {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px dashed rgba(255, 255, 255, 0.18);
+    font-size: 0.75rem;
+    line-height: 1.5;
+    color: var(--muted);
+}

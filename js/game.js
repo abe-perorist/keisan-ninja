@@ -25,6 +25,16 @@ import {
     getGroupStatus,
     claimDanAwards,
 } from './dans.js';
+import { recordCorrect, recordOvercome, recordPlayDay } from './stats.js';
+import {
+    JUTSU_GROUPS,
+    getJutsuByGroup,
+    getLearnedJutsuIds,
+    isJutsuLearned,
+    claimNewJutsu,
+    buildJutsuContext,
+    jutsuProgress,
+} from './jutsu.js';
 
 // モードごとの星の倍率。むずかしい修行ほど多くもらえるようにして、
 // 「かんたんなモードを連打したほうが得」という状態を解消する。
@@ -54,6 +64,10 @@ function modeLabel(op) {
 }
 
 const DAILY_BONUS_STARS = 20;
+
+// 忍術をおぼえたときの褒美。主役はあくまで「きみは◯◯が得意」の言葉で、
+// 星はおまけ。
+const JUTSU_STARS = 30;
 
 // はじめての修行ボーナスで配るものが尽きたとき（★6以外を集めきったとき）の代替。
 const CHALLENGE_FALLBACK_STARS = 100;
@@ -136,10 +150,14 @@ export class Game {
         }
     }
 
+    // まえにまちがえた問題を消す。実際に消したときだけ true を返し、
+    // 「まちがいをできるようにした」回数として数える。
     removeFailedProblem(q) {
-        let failed = this.loadFailedProblems();
-        failed = failed.filter(f => f.text !== q.text);
-        localStorage.setItem('keisanNinjaFailedProblems', JSON.stringify(failed));
+        const failed = this.loadFailedProblems();
+        const rest = failed.filter(f => f.text !== q.text);
+        if (rest.length === failed.length) return false;
+        localStorage.setItem('keisanNinjaFailedProblems', JSON.stringify(rest));
+        return true;
     }
 
     loadUnlockedScrolls() {
@@ -303,6 +321,8 @@ export class Game {
         const missionLabel = mission ? modeLabel(mission.op) : '';
         const danTotalCount = DAN_GROUPS.reduce((sum, g) => sum + getGroupStatus(g.id).total, 0);
         const danMasteredCount = DAN_GROUPS.reduce((sum, g) => sum + getGroupStatus(g.id).mastered, 0);
+        const totalJutsuCount = JUTSU_GROUPS.reduce((sum, g) => sum + getJutsuByGroup(g.id).length, 0);
+        const learnedJutsuCount = getLearnedJutsuIds().length;
 
         this.app.innerHTML = `
             <div class="screen mode-select-screen">
@@ -338,6 +358,11 @@ export class Game {
                     <button class="home-nav-btn home-nav-collection" id="homeBtnCollection">
                         <span>📖</span>
                         <span>忍者ずかん</span>
+                    </button>
+                    <button class="home-nav-btn home-nav-jutsu" id="homeBtnJutsu">
+                        <span>🌀</span>
+                        <span>忍術帳</span>
+                        <span class="home-nav-sub">${learnedJutsuCount} / ${totalJutsuCount} おぼえた</span>
                     </button>
                 </div>
 
@@ -422,6 +447,7 @@ export class Game {
         `;
 
         this.app.querySelector('#homeBtnDan').addEventListener('click', () => this.renderDanScreen());
+        this.app.querySelector('#homeBtnJutsu').addEventListener('click', () => this.renderJutsuScreen());
         this.app.querySelector('#homeBtnGacha').addEventListener('click', () => this.renderGachaScreen());
         this.app.querySelector('#homeBtnCollection').addEventListener('click', () => this.renderCollectionScreen());
         this.app.querySelector('#hudEquippedBox').addEventListener('click', () => this.renderCollectionScreen());
@@ -445,6 +471,89 @@ export class Game {
                 this.startGame();
             });
         });
+    }
+
+    // 忍術をおぼえた瞬間は、技名より「きみは◯◯が得意」の言葉を読ませたい。
+    // まとめて出すと流れてしまうので、1つずつ見せる。
+    showJutsuLearnedModal(list, index) {
+        const jutsu = list[index];
+        const rest = list.length - index - 1;
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.innerHTML = `
+            <div class="modal-content jutsu-modal">
+                <div class="modal-title">新しい忍術を おぼえた！</div>
+                <div class="jutsu-learned" style="--jc:${jutsu.color}">
+                    <div class="jutsu-learned-emoji">${jutsu.emoji}</div>
+                    <div class="jutsu-learned-name">${jutsu.name}</div>
+                    <div class="jutsu-learned-praise">${jutsu.praise}</div>
+                    <div class="jutsu-learned-cond">${jutsu.condition}</div>
+                </div>
+                <button class="rbtn rbtn-back modal-close-btn">${rest > 0 ? `つぎへ（あと${rest}）` : 'とじる'}</button>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+
+        overlay.querySelector('.modal-close-btn').addEventListener('click', () => {
+            overlay.remove();
+            if (rest > 0) this.showJutsuLearnedModal(list, index + 1);
+        });
+    }
+
+    renderJutsuScreen() {
+        const learned = getLearnedJutsuIds();
+        const ctx = buildJutsuContext(this.todayKey());
+
+        const groupHtml = JUTSU_GROUPS.map(group => {
+            const list = getJutsuByGroup(group.id);
+            const cards = list.map(jutsu => {
+                const got = isJutsuLearned(jutsu.id, learned);
+                const prog = got ? null : jutsuProgress(jutsu, ctx);
+                return `
+                    <div class="jutsu-card ${got ? 'learned' : ''}" style="--jc:${jutsu.color}">
+                        <div class="jutsu-card-head">
+                            <span class="jutsu-card-emoji">${jutsu.emoji}</span>
+                            <span class="jutsu-card-name">${jutsu.name}</span>
+                        </div>
+                        ${got
+                            ? `<div class="jutsu-card-praise">${jutsu.praise}</div>`
+                            : `<div class="jutsu-card-todo">${jutsu.condition} すると おぼえられる</div>`}
+                        ${got
+                            ? `<div class="jutsu-card-cond">${jutsu.condition}</div>`
+                            : prog
+                                ? `<div class="jutsu-bar"><span style="width:${Math.round((prog.now / prog.goal) * 100)}%; background:${jutsu.color}"></span></div>
+                                   <div class="jutsu-card-prog">${prog.now} / ${prog.goal}</div>`
+                                : ''}
+                    </div>
+                `;
+            }).join('');
+            const got = list.filter(j => isJutsuLearned(j.id, learned)).length;
+            return `
+                <div class="jutsu-group">
+                    <div class="jutsu-group-head">
+                        <div>
+                            <span class="jutsu-group-label">${group.label}</span>
+                            <span class="jutsu-group-desc">${group.desc}</span>
+                        </div>
+                        <span class="jutsu-group-count">${got} / ${list.length}</span>
+                    </div>
+                    <div class="jutsu-list">${cards}</div>
+                </div>
+            `;
+        }).join('');
+
+        this.app.innerHTML = `
+            <div class="screen jutsu-screen">
+                <div class="dan-header">
+                    <button class="dan-back-btn" id="jutsuBackBtn">← もどる</button>
+                    <h2 class="dan-title">🌀 忍術帳</h2>
+                </div>
+                <p class="dan-lead">おぼえた忍術は <b>きみが とくいなこと</b>。<br>一度おぼえた忍術は、ずっと きみのものです。</p>
+                ${groupHtml}
+            </div>
+        `;
+
+        this.app.querySelector('#jutsuBackBtn').addEventListener('click', () => this.renderModeSelect());
     }
 
     renderDanScreen() {
@@ -505,6 +614,7 @@ export class Game {
         this.correctCount = 0;
         this.questionCount = 0;
         this.danNewlyCleared = 0;
+        this.streak = 0;
 
         // ハイスコアはプレイ中に更新されてしまうので、対象かどうかはここで確定させる
         this.challengeBonusOp = (!this.isChallengeBonusUsedToday()
@@ -756,7 +866,13 @@ export class Game {
         const fb = document.getElementById('feedback');
         if (selected === correct) {
             // Remove from failures on success in any mode (or just in special)
-            if (this.currentQuestion) this.removeFailedProblem(this.currentQuestion);
+            const overcame = this.currentQuestion ? this.removeFailedProblem(this.currentQuestion) : false;
+
+            // 忍術の材料。まえにまちがえた問題を正解できたときは別に数える。
+            this.streak++;
+            const elapsed = this.questionStartedAt ? Date.now() - this.questionStartedAt : null;
+            recordCorrect(this.currentOperator, elapsed, this.streak);
+            if (overcame) recordOvercome();
 
             // 段の進捗は1問ごとに保存する。時間切れで途中終了しても、
             // そこまでに正解した問題はちゃんと残る。
@@ -783,6 +899,7 @@ export class Game {
             this.sounds.correct.currentTime = 0;
             this.sounds.correct.play().catch(() => {});
         } else {
+            this.streak = 0;
             this.score = Math.max(0, this.score - 10);
             const sv = document.getElementById('scoreVal');
             if (sv) {
@@ -804,6 +921,7 @@ export class Game {
 
     startQuestionTimer() {
         clearTimeout(this.questionTimer);
+        this.questionStartedAt = Date.now();
         const bar = document.getElementById('qTimerBar');
         if (bar) {
             bar.classList.remove('running');
@@ -812,6 +930,7 @@ export class Game {
             bar.classList.add('running');
         }
         this.questionTimer = setTimeout(() => {
+            this.streak = 0;
             if (this.currentQuestion) {
                 this.saveFailedProblem(this.currentQuestion);
             }
@@ -888,11 +1007,16 @@ export class Game {
         });
         const danStars = danAwards.reduce((sum, a) => sum + a.stars, 0);
 
+        // 忍術。段の皆伝も材料になるので、段の判定より後で見る。
+        recordPlayDay(this.todayKey());
+        const newJutsu = claimNewJutsu(this.todayKey());
+        const jutsuStars = newJutsu.length * JUTSU_STARS;
+
         // コンプリート報酬はボーナスでそろう可能性があるので、必ずその後に判定する
         const newAwards = claimCompletionAwards();
         const awardStars = newAwards.reduce((sum, a) => sum + a.stars, 0);
 
-        this.totalStars += earnedStars + bonusStars + challengeGiftStars + danStars + awardStars;
+        this.totalStars += earnedStars + bonusStars + challengeGiftStars + danStars + jutsuStars + awardStars;
         localStorage.setItem('keisanNinjaTotalStars', this.totalStars.toString());
 
         let newScrollUnlocked = null;
@@ -941,6 +1065,7 @@ export class Game {
                     ${missionCleared ? `<div class="mission-cleared-notice">🎯 きょうの任務 たっせい！ ＋${DAILY_BONUS_STARS}🌟</div>` : ''}
                     ${challengeGift ? `<div class="challenge-bonus-notice">🎁 はじめての修行ボーナス！ ${challengeGift.emoji} <b>${challengeGift.name}</b> をゲット！</div>` : ''}
                     ${challengeGiftStars > 0 ? `<div class="challenge-bonus-notice">🎁 はじめての修行ボーナス！ ＋${challengeGiftStars}🌟</div>` : ''}
+                    ${newJutsu.map(j => `<div class="award-notice">${j.emoji} <b>${j.name}</b> をおぼえた！ ＋${JUTSU_STARS}🌟</div>`).join('')}
                     ${danAwards.map(a => `<div class="award-notice">${a.emoji} <b>${a.title}</b>！ ＋${a.stars}🌟${a.grantedItem ? ` ${a.grantedItem.emoji} <b>${a.grantedItem.name}</b> をゲット！` : ''}</div>`).join('')}
                     ${newAwards.map(a => `<div class="award-notice">🏅 <b>${a.title}</b> 達成！${a.stars > 0 ? ` ＋${a.stars}🌟` : ''}${a.grantItemId ? ` ${getItemById(a.grantItemId).emoji} <b>${getItemById(a.grantItemId).name}</b> をゲット！` : ''}</div>`).join('')}
                     <div style="font-size: 1.15rem; font-weight: bold; color: var(--gold); margin: 10px 0 12px;">🌟 トータル: ${this.totalStars}個</div>
@@ -951,7 +1076,10 @@ export class Game {
                 </div>
 
                 <div class="result-btns" style="flex-direction:column; align-items:center;">
-                    <button class="rbtn rbtn-scrolls">📜 巻物を見る</button>
+                    <div style="display:flex; gap:12px; width:100%;">
+                        <button class="rbtn rbtn-jutsu">🌀 忍術帳</button>
+                        <button class="rbtn rbtn-scrolls">📜 巻物</button>
+                    </div>
                     <div style="display:flex; gap:12px; width:100%;">
                         <button class="rbtn rbtn-retry">もう一度</button>
                         <button class="rbtn rbtn-back">もどる</button>
@@ -962,6 +1090,7 @@ export class Game {
 
         this.app.querySelector('.store-btn').addEventListener('click', () => this.renderGachaScreen());
         this.app.querySelector('.result-collection-btn').addEventListener('click', () => this.renderCollectionScreen());
+        this.app.querySelector('.rbtn-jutsu').addEventListener('click', () => this.renderJutsuScreen());
         this.app.querySelector('.rbtn-scrolls').addEventListener('click', () => this.showScrollsModal());
         this.app.querySelector('.rbtn-retry').addEventListener('click', () => this.startGame());
         this.app.querySelector('.rbtn-back').addEventListener('click', () => {
@@ -969,7 +1098,9 @@ export class Game {
             else this.renderModeSelect();
         });
 
-        if (newScrollUnlocked) {
+        if (newJutsu.length > 0) {
+            setTimeout(() => this.showJutsuLearnedModal(newJutsu, 0), 500);
+        } else if (newScrollUnlocked) {
             setTimeout(() => this.showSingleScrollModal(newScrollUnlocked), 500);
         }
     }
