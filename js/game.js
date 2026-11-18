@@ -14,6 +14,17 @@ import {
     claimCompletionAwards,
     grantRandomUnownedItem,
 } from './rewards.js';
+import {
+    DAN_GROUPS,
+    isDanOp,
+    getDanById,
+    getDansByGroup,
+    danProblems,
+    markDanProblemCleared,
+    getDanStatus,
+    getGroupStatus,
+    claimDanAwards,
+} from './dans.js';
 
 // モードごとの星の倍率。むずかしい修行ほど多くもらえるようにして、
 // 「かんたんなモードを連打したほうが得」という状態を解消する。
@@ -32,6 +43,15 @@ const MODE_LABELS = {
     '+': '足し算', '-': '引き算', '×': '掛け算', '÷': '割り算',
     special: '特訓', hyper: 'ハイパー', master: 'マスター',
 };
+
+// 段は19個あるので MODE_LABELS には並べず、ここで引く。
+function modeLabel(op) {
+    if (isDanOp(op)) {
+        const dan = getDanById(op);
+        return dan ? dan.label : op;
+    }
+    return MODE_LABELS[op] || op;
+}
 
 const DAILY_BONUS_STARS = 20;
 
@@ -220,6 +240,15 @@ export class Game {
     }
 
     getRankInfo(score, operator) {
+        // 段は「何点取ったか」ではなく「段をどこまで覚えたか」で称える。
+        // 短い段ほど満点が出やすいので、点数で測ると段ごとに意味が変わってしまう。
+        if (isDanOp(operator)) {
+            const { cleared, total } = getDanStatus(operator);
+            if (cleared >= total) return { name: '免許皆伝', emoji: '🎖️', color: '#f39c12' };
+            if (cleared >= total * 0.7) return { name: 'あと少し', emoji: '🔥', color: '#e67e22' };
+            if (cleared > 0) return { name: 'しゅぎょう中', emoji: '🌱', color: '#2ecc71' };
+            return { name: 'これから', emoji: '🥷', color: '#3498db' };
+        }
         if (operator === 'intro-add' || operator === 'intro-sub' || operator === 'intro-add-blank' || operator === 'intro-sub-blank') {
             if (score >= 90)  return { name: 'けいさんめいじん', emoji: '🌟', color: '#f39c12' };
             if (score >= 60)  return { name: 'けいさんじょうず', emoji: '😊', color: '#27ae60' };
@@ -271,7 +300,9 @@ export class Game {
             return m > 1 ? `<span class="star-mult">🌟×${m}</span>` : '';
         };
         const mission = this.dailyMission;
-        const missionLabel = mission ? MODE_LABELS[mission.op] : '';
+        const missionLabel = mission ? modeLabel(mission.op) : '';
+        const danTotalCount = DAN_GROUPS.reduce((sum, g) => sum + getGroupStatus(g.id).total, 0);
+        const danMasteredCount = DAN_GROUPS.reduce((sum, g) => sum + getGroupStatus(g.id).mastered, 0);
 
         this.app.innerHTML = `
             <div class="screen mode-select-screen">
@@ -295,6 +326,11 @@ export class Game {
                 </div>
 
                 <div class="home-nav-grid">
+                    <button class="home-nav-btn home-nav-dan" id="homeBtnDan">
+                        <span>🏯</span>
+                        <span>だんべつ修行</span>
+                        <span class="home-nav-sub">${danMasteredCount} / ${danTotalCount} 皆伝</span>
+                    </button>
                     <button class="home-nav-btn home-nav-gacha" id="homeBtnGacha">
                         <span>🏪</span>
                         <span>忍 ガチャ</span>
@@ -385,6 +421,7 @@ export class Game {
             </div>
         `;
 
+        this.app.querySelector('#homeBtnDan').addEventListener('click', () => this.renderDanScreen());
         this.app.querySelector('#homeBtnGacha').addEventListener('click', () => this.renderGachaScreen());
         this.app.querySelector('#homeBtnCollection').addEventListener('click', () => this.renderCollectionScreen());
         this.app.querySelector('#hudEquippedBox').addEventListener('click', () => this.renderCollectionScreen());
@@ -410,10 +447,64 @@ export class Game {
         });
     }
 
+    renderDanScreen() {
+        const groupHtml = DAN_GROUPS.map(group => {
+            const status = getGroupStatus(group.id);
+            const cards = getDansByGroup(group.id).map(dan => {
+                const st = getDanStatus(dan.id);
+                const pct = Math.round((st.cleared / st.total) * 100);
+                return `
+                    <button class="dan-card ${st.mastered ? 'mastered' : ''}" data-op="${dan.id}" style="--dc:${dan.color}">
+                        ${st.mastered ? '<span class="dan-card-badge">🎖️</span>' : ''}
+                        <span class="dan-card-emoji">${dan.emoji}</span>
+                        <span class="dan-card-label">${dan.label}</span>
+                        <span class="dan-bar"><span style="width:${pct}%; background:${dan.color}"></span></span>
+                        <span class="dan-card-count">${st.cleared}/${st.total}</span>
+                    </button>
+                `;
+            }).join('');
+            return `
+                <div class="dan-group">
+                    <div class="dan-group-head">
+                        <div>
+                            <span class="dan-group-label">${group.label}</span>
+                            <span class="dan-group-desc">${group.desc}</span>
+                        </div>
+                        <span class="dan-group-count ${status.complete ? 'complete' : ''}">
+                            ${status.complete ? `🎖️ ${group.groupTitle}` : `${status.mastered} / ${status.total} 皆伝`}
+                        </span>
+                    </div>
+                    <div class="dan-grid">${cards}</div>
+                    ${status.complete ? '' : `<div class="dan-group-reward">全部そろえると ＋${group.groupStars}🌟 と 忍者1体 🎁</div>`}
+                </div>
+            `;
+        }).join('');
+
+        this.app.innerHTML = `
+            <div class="screen dan-screen">
+                <div class="dan-header">
+                    <button class="dan-back-btn" id="danBackBtn">← もどる</button>
+                    <h2 class="dan-title">🏯 だんべつ修行</h2>
+                </div>
+                <p class="dan-lead">ぜんぶの問題を1回ずつ正解すると <b>免許皆伝</b> 🎖️<br>まちがえても、おぼえた問題はきえません。</p>
+                ${groupHtml}
+            </div>
+        `;
+
+        this.app.querySelector('#danBackBtn').addEventListener('click', () => this.renderModeSelect());
+        this.app.querySelectorAll('.dan-card').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.currentOperator = btn.dataset.op;
+                this.startGame();
+            });
+        });
+    }
+
     startGame() {
         this.score = 0;
         this.correctCount = 0;
         this.questionCount = 0;
+        this.danNewlyCleared = 0;
 
         // ハイスコアはプレイ中に更新されてしまうので、対象かどうかはここで確定させる
         this.challengeBonusOp = (!this.isChallengeBonusUsedToday()
@@ -421,7 +512,13 @@ export class Game {
             ? this.currentOperator
             : null;
         
-        if (this.currentOperator === 'special') {
+        if (isDanOp(this.currentOperator)) {
+            // 段の問題は有限（4〜9問）なので、毎回その全問をシャッフルして1周する。
+            // 覚えていない問題だけ出すと「全問できた」の達成感が出ないため全問出す。
+            this.danQueue = danProblems(getDanById(this.currentOperator));
+            this.danQueue.sort(() => Math.random() - 0.5);
+            this.sessionMaxQ = this.danQueue.length;
+        } else if (this.currentOperator === 'special') {
             this.trainingPool = this.loadFailedProblems();
             this.trainingPool.sort(() => Math.random() - 0.5);
             if (this.trainingPool.length > 0) {
@@ -434,8 +531,16 @@ export class Game {
         }
 
         const isIntro = ['intro-add', 'intro-sub', 'intro-add-blank', 'intro-sub-blank'].includes(this.currentOperator);
-        this.timeLimit = isIntro ? 30 : this.currentOperator === 'hyper' ? 7 : this.currentOperator === 'master' ? 30 : 5;
-        this.totalTimeLeft = isIntro ? 120 : this.totalTimeLimit;
+        if (isDanOp(this.currentOperator)) {
+            // 段は覚えるための修行なので、急かさない。全問ぶんの時間を必ず確保する。
+            const dan = getDanById(this.currentOperator);
+            this.timeLimit = dan.group === 'kuku' ? 10 : 20;
+            // 1問ずつ時間切れになっても全問ぶん出しきれるだけの余裕を持たせる
+            this.totalTimeLeft = this.sessionMaxQ * (this.timeLimit + 2) + 10;
+        } else {
+            this.timeLimit = isIntro ? 30 : this.currentOperator === 'hyper' ? 7 : this.currentOperator === 'master' ? 30 : 5;
+            this.totalTimeLeft = isIntro ? 120 : this.totalTimeLimit;
+        }
         this.isPlaying = true;
         this.sounds.start.play().catch(() => {});
         this.renderGameScreen();
@@ -513,6 +618,10 @@ export class Game {
     }
 
     generateQuestion() {
+        if (isDanOp(this.currentOperator)) {
+            return this.danQueue.pop();
+        }
+
         if (this.currentOperator === 'intro-add') {
             const a = Math.floor(Math.random() * 9) + 1;
             const b = Math.floor(Math.random() * 9) + 1;
@@ -649,6 +758,14 @@ export class Game {
             // Remove from failures on success in any mode (or just in special)
             if (this.currentQuestion) this.removeFailedProblem(this.currentQuestion);
 
+            // 段の進捗は1問ごとに保存する。時間切れで途中終了しても、
+            // そこまでに正解した問題はちゃんと残る。
+            if (isDanOp(this.currentOperator) && this.currentQuestion && this.currentQuestion.key) {
+                if (markDanProblemCleared(this.currentOperator, this.currentQuestion.key)) {
+                    this.danNewlyCleared = (this.danNewlyCleared || 0) + 1;
+                }
+            }
+
             this.correctCount++;
             this.score += 10;
             if (this.score > this.highScores[this.currentOperator]) {
@@ -761,11 +878,21 @@ export class Game {
             this.challengeBonusOp = null;
         }
 
+        // 段の皆伝。グループ制覇では忍者をもらえるので、図鑑のコンプリート判定より先に確定させる。
+        const isDan = isDanOp(this.currentOperator);
+        const danInfo = isDan ? getDanById(this.currentOperator) : null;
+        const danStatus = isDan ? getDanStatus(this.currentOperator) : null;
+        const danAwards = isDan ? claimDanAwards() : [];
+        danAwards.forEach(a => {
+            if (a.grantNinja) a.grantedItem = grantRandomUnownedItem();
+        });
+        const danStars = danAwards.reduce((sum, a) => sum + a.stars, 0);
+
         // コンプリート報酬はボーナスでそろう可能性があるので、必ずその後に判定する
         const newAwards = claimCompletionAwards();
         const awardStars = newAwards.reduce((sum, a) => sum + a.stars, 0);
 
-        this.totalStars += earnedStars + bonusStars + challengeGiftStars + awardStars;
+        this.totalStars += earnedStars + bonusStars + challengeGiftStars + danStars + awardStars;
         localStorage.setItem('keisanNinjaTotalStars', this.totalStars.toString());
 
         let newScrollUnlocked = null;
@@ -796,13 +923,25 @@ export class Game {
                 <div class="final-score">${this.score}<small>点</small></div>
                 ${isRecord ? '<div class="new-record">🎉 ハイスコア更新！</div>' : ''}
                 ${newScrollUnlocked ? '<div class="new-scroll-notice" style="color:var(--gold); font-weight:bold; margin-top:10px;">📜 新しい巻物を手に入れた！</div>' : ''}
+                ${isDan ? `
+                    <div class="dan-result ${danStatus.mastered ? 'mastered' : ''}">
+                        <div class="dan-result-head">${danInfo.emoji} ${danInfo.label}</div>
+                        <div class="dan-bar"><span style="width:${Math.round((danStatus.cleared / danStatus.total) * 100)}%; background:${danInfo.color}"></span></div>
+                        <div class="dan-result-count">${danStatus.cleared} / ${danStatus.total}問 おぼえた</div>
+                        ${danStatus.mastered
+                            ? '<div class="dan-mastered-badge">🎖️ 免許皆伝！</div>'
+                            : `<div class="dan-remaining">あと ${danStatus.total - danStatus.cleared}問 で免許皆伝</div>`}
+                        ${this.danNewlyCleared > 0 ? `<div class="dan-new-notice">✨ あたらしく ${this.danNewlyCleared}問 おぼえた！</div>` : ''}
+                    </div>
+                ` : ''}
 
                 <div class="stars-info" style="margin: 16px 0; padding: 14px; background: var(--surface2); border-radius: 16px; border: 2px solid var(--gold); width: 100%; max-width: 320px; box-shadow: 0 4px 12px rgba(0,0,0,0.4);">
                     <div style="font-size: 1.15rem; font-weight: bold; color: var(--gold); margin-bottom: 6px;">🌟 今回ゲット: ${earnedStars}個</div>
-                    <div class="star-breakdown">せいかい ${baseStars}問 ${multiplier > 1 ? `× ${multiplier}ばい（${MODE_LABELS[this.currentOperator]}）` : ''}</div>
+                    <div class="star-breakdown">せいかい ${baseStars}問 ${multiplier > 1 ? `× ${multiplier}ばい（${modeLabel(this.currentOperator)}）` : ''}</div>
                     ${missionCleared ? `<div class="mission-cleared-notice">🎯 きょうの任務 たっせい！ ＋${DAILY_BONUS_STARS}🌟</div>` : ''}
                     ${challengeGift ? `<div class="challenge-bonus-notice">🎁 はじめての修行ボーナス！ ${challengeGift.emoji} <b>${challengeGift.name}</b> をゲット！</div>` : ''}
                     ${challengeGiftStars > 0 ? `<div class="challenge-bonus-notice">🎁 はじめての修行ボーナス！ ＋${challengeGiftStars}🌟</div>` : ''}
+                    ${danAwards.map(a => `<div class="award-notice">${a.emoji} <b>${a.title}</b>！ ＋${a.stars}🌟${a.grantedItem ? ` ${a.grantedItem.emoji} <b>${a.grantedItem.name}</b> をゲット！` : ''}</div>`).join('')}
                     ${newAwards.map(a => `<div class="award-notice">🏅 <b>${a.title}</b> 達成！${a.stars > 0 ? ` ＋${a.stars}🌟` : ''}${a.grantItemId ? ` ${getItemById(a.grantItemId).emoji} <b>${getItemById(a.grantItemId).name}</b> をゲット！` : ''}</div>`).join('')}
                     <div style="font-size: 1.15rem; font-weight: bold; color: var(--gold); margin: 10px 0 12px;">🌟 トータル: ${this.totalStars}個</div>
                     <div style="display: flex; gap: 8px;">
@@ -825,7 +964,10 @@ export class Game {
         this.app.querySelector('.result-collection-btn').addEventListener('click', () => this.renderCollectionScreen());
         this.app.querySelector('.rbtn-scrolls').addEventListener('click', () => this.showScrollsModal());
         this.app.querySelector('.rbtn-retry').addEventListener('click', () => this.startGame());
-        this.app.querySelector('.rbtn-back').addEventListener('click', () => this.renderModeSelect());
+        this.app.querySelector('.rbtn-back').addEventListener('click', () => {
+            if (isDan) this.renderDanScreen();
+            else this.renderModeSelect();
+        });
 
         if (newScrollUnlocked) {
             setTimeout(() => this.showSingleScrollModal(newScrollUnlocked), 500);
